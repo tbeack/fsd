@@ -1,0 +1,10 @@
+{
+  "name": "fsd",
+  "description": "Full Stack Development — a three-layer meta-framework for Claude Code that organizes skills, agents, and commands with upgrade-safe customization",
+  "version": "0.1.0",
+  "author": {
+    "name": "Theo Beack"
+  },
+  "license": "MIT",
+  "keywords": ["framework", "skills", "agents", "commands", "workflow", "meta-framework"]
+}
