@@ -1,0 +1,65 @@
+#!/usr/bin/env node
+'use strict';
+
+const path = require('path');
+
+const pluginRoot = process.argv[2]
+  || process.env.CLAUDE_PLUGIN_ROOT
+  || path.resolve(__dirname, '..');
+
+const { resolveLayerPaths, loadConfig } = require(path.join(pluginRoot, 'scripts', 'config.js'));
+const { loadContent } = require(path.join(pluginRoot, 'scripts', 'loader.js'));
+
+const paths = resolveLayerPaths(pluginRoot);
+const config = loadConfig(paths);
+const { skills, agents } = loadContent({ ...paths, config });
+
+// --- formatting helpers ---
+
+function pad(str, len) {
+  return str.length >= len ? str : str + ' '.repeat(len - str.length);
+}
+
+function truncate(str, max) {
+  return str.length <= max ? str : str.slice(0, max - 3) + '...';
+}
+
+function formatRow(name, layer, description) {
+  return `  ${pad(name, 22)}${pad(layer, 10)}${truncate(description, 50)}`;
+}
+
+// --- build output ---
+
+const lines = [];
+
+lines.push('FSD Framework Active');
+lines.push('====================');
+
+if (skills.length > 0) {
+  lines.push('');
+  lines.push(`SKILLS (${skills.length} active)`);
+  for (const s of skills) {
+    lines.push(formatRow(s.name, s.layer, s.description));
+  }
+}
+
+if (agents.length > 0) {
+  lines.push('');
+  lines.push(`AGENTS (${agents.length} active)`);
+  for (const a of agents) {
+    lines.push(formatRow(a.name, a.layer, a.description));
+  }
+}
+
+const layerParts = [
+  `core (${paths.corePath})`,
+  `user (${paths.userPath})`,
+  `project (${paths.projectPath})`,
+];
+
+lines.push('');
+lines.push(`Layers: ${layerParts.join(' | ')}`);
+lines.push('Commands: /fsd:list, /fsd:add, /fsd:init');
+lines.push('');
+
+process.stdout.write(lines.join('\n'));
