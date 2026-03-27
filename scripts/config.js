@@ -6,8 +6,50 @@ const path = require('path');
 const { parseYaml } = require(path.join(__dirname, 'yaml-parser.js'));
 
 /**
+ * Strategic merge of two config objects.
+ * - Scalars: last writer wins
+ * - Arrays: concatenate with dedup
+ * - Objects: recursive merge
+ * - Keys ending with !replace: force full replacement (strip suffix)
+ */
+function strategicMerge(target, source) {
+  const result = { ...target };
+
+  for (const key of Object.keys(source)) {
+    // Handle !replace suffix — force full replacement
+    if (key.endsWith('!replace')) {
+      const realKey = key.slice(0, -8); // strip '!replace'
+      result[realKey] = source[key];
+      continue;
+    }
+
+    const targetVal = result[key];
+    const sourceVal = source[key];
+
+    if (!(key in result)) {
+      result[key] = sourceVal;
+    } else if (Array.isArray(targetVal) && Array.isArray(sourceVal)) {
+      // Concatenate with dedup
+      result[key] = [...new Set([...targetVal, ...sourceVal])];
+    } else if (isPlainObject(targetVal) && isPlainObject(sourceVal)) {
+      // Recursive merge
+      result[key] = strategicMerge(targetVal, sourceVal);
+    } else {
+      // Scalar: last writer wins
+      result[key] = sourceVal;
+    }
+  }
+
+  return result;
+}
+
+function isPlainObject(val) {
+  return val !== null && typeof val === 'object' && !Array.isArray(val);
+}
+
+/**
  * Load and merge config.yaml from three layers.
- * Shallow merge: project > user > core (later layers override earlier).
+ * Strategic merge: project > user > core.
  *
  * @param {Object} paths
  * @param {string} paths.corePath  - Core plugin directory
@@ -26,8 +68,7 @@ function loadConfig({ corePath, userPath, projectPath }) {
     const content = fs.readFileSync(configFile, 'utf-8');
     const parsed = parseYaml(content);
 
-    // Shallow merge: each key from higher layer replaces entirely
-    merged = { ...merged, ...parsed };
+    merged = strategicMerge(merged, parsed);
   }
 
   return merged;
@@ -46,4 +87,4 @@ function resolveLayerPaths(pluginRoot) {
   return { corePath, userPath, projectPath };
 }
 
-module.exports = { loadConfig, resolveLayerPaths };
+module.exports = { loadConfig, resolveLayerPaths, strategicMerge };

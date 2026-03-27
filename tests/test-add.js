@@ -94,4 +94,52 @@ function mkTmpDir() {
   fs.rmSync(userDir, { recursive: true });
 }
 
+// Test 7: Generated skill template passes validation
+{
+  const { validateSkill } = require(path.join(__dirname, '..', 'scripts', 'validator.js'));
+  const { extractFrontmatter } = require(path.join(__dirname, '..', 'scripts', 'loader.js'));
+
+  const userDir = mkTmpDir();
+  addContent({ type: 'skill', name: 'test-valid', userPath: userDir, project: false });
+
+  const content = fs.readFileSync(path.join(userDir, 'skills', 'test-valid', 'SKILL.md'), 'utf-8');
+  const fm = extractFrontmatter(content);
+  const result = validateSkill(fm);
+  assert.strictEqual(result.valid, true, `Skill template should pass validation: ${result.errors.join(', ')}`);
+
+  fs.rmSync(userDir, { recursive: true });
+}
+
+// Test 8: Generated agent template passes validation
+{
+  const { validateAgent } = require(path.join(__dirname, '..', 'scripts', 'validator.js'));
+  const { extractFrontmatter } = require(path.join(__dirname, '..', 'scripts', 'loader.js'));
+
+  const userDir = mkTmpDir();
+  addContent({ type: 'agent', name: 'test-valid', userPath: userDir, project: false });
+
+  const content = fs.readFileSync(path.join(userDir, 'agents', 'test-valid.md'), 'utf-8');
+  const fm = extractFrontmatter(content);
+  const result = validateAgent(fm);
+  assert.strictEqual(result.valid, true, `Agent template should pass validation: ${result.errors.join(', ')}`);
+
+  fs.rmSync(userDir, { recursive: true });
+}
+
+// Test 9: Generated command template passes validation
+{
+  const { validateCommand } = require(path.join(__dirname, '..', 'scripts', 'validator.js'));
+  const { extractFrontmatter } = require(path.join(__dirname, '..', 'scripts', 'loader.js'));
+
+  const userDir = mkTmpDir();
+  addContent({ type: 'command', name: 'test-valid', userPath: userDir, project: false });
+
+  const content = fs.readFileSync(path.join(userDir, 'commands', 'test-valid.md'), 'utf-8');
+  const fm = extractFrontmatter(content);
+  const result = validateCommand(fm);
+  assert.strictEqual(result.valid, true, `Command template should pass validation: ${result.errors.join(', ')}`);
+
+  fs.rmSync(userDir, { recursive: true });
+}
+
 console.log('  All add tests passed');

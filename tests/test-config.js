@@ -68,19 +68,68 @@ function writeYaml(dir, content) {
   assert.deepStrictEqual(config, {});
 }
 
-// Test 5: Array values merge by replacement (not concatenation)
+// Test 5: Arrays concatenate with dedup
 {
   const coreDir = mkTmpDir();
   const userDir = mkTmpDir();
   writeYaml(coreDir, 'disabled:\n  - "skills/brainstorm"\n  - "skills/debug"');
-  writeYaml(userDir, 'disabled:\n  - "skills/verify"');
+  writeYaml(userDir, 'disabled:\n  - "skills/verify"\n  - "skills/debug"');
 
   const config = loadConfig({ corePath: coreDir, userPath: userDir, projectPath: '/nonexistent' });
-  // Shallow merge: user's disabled array replaces core's entirely
+  // Concatenate + dedup: [brainstorm, debug, verify]
+  assert.strictEqual(config.disabled.length, 3);
+  assert.ok(config.disabled.includes('skills/brainstorm'));
+  assert.ok(config.disabled.includes('skills/debug'));
+  assert.ok(config.disabled.includes('skills/verify'));
+
+  fs.rmSync(coreDir, { recursive: true });
+  fs.rmSync(userDir, { recursive: true });
+}
+
+// Test 6: Objects merge recursively
+{
+  const coreDir = mkTmpDir();
+  const userDir = mkTmpDir();
+  writeYaml(coreDir, 'conventions:\n  commit_style: conventional\n  test_before_complete: true');
+  writeYaml(userDir, 'conventions:\n  commit_style: gitmoji');
+
+  const config = loadConfig({ corePath: coreDir, userPath: userDir, projectPath: '/nonexistent' });
+  assert.strictEqual(config.conventions.commit_style, 'gitmoji');
+  assert.strictEqual(config.conventions.test_before_complete, 'true');
+
+  fs.rmSync(coreDir, { recursive: true });
+  fs.rmSync(userDir, { recursive: true });
+}
+
+// Test 7: !replace suffix forces full replacement for arrays
+{
+  const coreDir = mkTmpDir();
+  const userDir = mkTmpDir();
+  writeYaml(coreDir, 'disabled:\n  - "skills/brainstorm"\n  - "skills/debug"');
+  writeYaml(userDir, 'disabled!replace:\n  - "skills/verify"');
+
+  const config = loadConfig({ corePath: coreDir, userPath: userDir, projectPath: '/nonexistent' });
   assert.deepStrictEqual(config.disabled, ['skills/verify']);
 
   fs.rmSync(coreDir, { recursive: true });
   fs.rmSync(userDir, { recursive: true });
+}
+
+// Test 8: Scalar values still last-writer-wins across three layers
+{
+  const coreDir = mkTmpDir();
+  const userDir = mkTmpDir();
+  const projDir = mkTmpDir();
+  writeYaml(coreDir, 'workflow: core-flow');
+  writeYaml(userDir, 'workflow: user-flow');
+  writeYaml(projDir, 'workflow: project-flow');
+
+  const config = loadConfig({ corePath: coreDir, userPath: userDir, projectPath: projDir });
+  assert.strictEqual(config.workflow, 'project-flow');
+
+  fs.rmSync(coreDir, { recursive: true });
+  fs.rmSync(userDir, { recursive: true });
+  fs.rmSync(projDir, { recursive: true });
 }
 
 console.log('  All config tests passed');

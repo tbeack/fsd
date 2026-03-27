@@ -42,6 +42,7 @@ description: |
   <commentary>User needs ${name} assistance, trigger this agent.</commentary>
   </example>
 model: sonnet
+tools: ["Glob", "Grep", "Read", "LS"]
 color: cyan
 ---
 
@@ -60,7 +61,7 @@ Provide clear, actionable results with specific file paths and code references.
 
   command: (name) => `---
 name: fsd:${name}
-description: ${name.charAt(0).toUpperCase() + name.slice(1).replace(/-/g, ' ')}
+description: ${name.charAt(0).toUpperCase() + name.slice(1).replace(/-/g, ' ')} — describe what this command does and when to use it
 ---
 
 Implement the ${name} command.

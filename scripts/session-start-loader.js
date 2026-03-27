@@ -12,7 +12,7 @@ const { loadContent } = require(path.join(pluginRoot, 'scripts', 'loader.js'));
 
 const paths = resolveLayerPaths(pluginRoot);
 const config = loadConfig(paths);
-const { skills, agents } = loadContent({ ...paths, config });
+const { skills, agents, validationSummary } = loadContent({ ...paths, config });
 
 // --- formatting helpers ---
 
@@ -51,6 +51,15 @@ if (agents.length > 0) {
   }
 }
 
+// Show validation issues if any
+if (validationSummary.invalid > 0 || validationSummary.warnings > 0) {
+  lines.push('');
+  const parts = [];
+  if (validationSummary.invalid > 0) parts.push(`${validationSummary.invalid} error(s)`);
+  if (validationSummary.warnings > 0) parts.push(`${validationSummary.warnings} warning(s)`);
+  lines.push(`VALIDATION: ${parts.join(', ')} (run /fsd:validate for details)`);
+}
+
 const layerParts = [
   `core (${paths.corePath})`,
   `user (${paths.userPath})`,
@@ -59,7 +68,7 @@ const layerParts = [
 
 lines.push('');
 lines.push(`Layers: ${layerParts.join(' | ')}`);
-lines.push('Commands: /fsd:list, /fsd:add, /fsd:init');
+lines.push('Commands: /fsd:list, /fsd:add, /fsd:init, /fsd:validate');
 lines.push('');
 
 process.stdout.write(lines.join('\n'));
