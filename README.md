@@ -30,12 +30,6 @@ No npm dependencies -- FSD uses only Node.js built-ins (`fs`, `path`, `assert`).
 ### Quick install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tbeack/fsd/main/install.sh | bash
-```
-
-Or clone and run locally:
-
-```bash
 git clone https://github.com/tbeack/fsd.git ~/.claude/plugins/fsd
 bash ~/.claude/plugins/fsd/install.sh
 ```
