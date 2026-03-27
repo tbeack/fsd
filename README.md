@@ -17,15 +17,63 @@ FSD gives Claude Code a structured development workflow through five core skills
 
 If you create a skill named `brainstorm` in `~/.fsd/skills/`, it shadows the core version. A project-level version in `.fsd/skills/` shadows both.
 
+## Prerequisites
+
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI installed and working
+- Node.js 18+
+- Git
+
+No npm dependencies -- FSD uses only Node.js built-ins (`fs`, `path`, `assert`).
+
 ## Installation
 
-Clone the repo into your Claude Code plugins directory:
+### Quick install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/tbeack/fsd/main/install.sh | bash
+```
+
+Or clone and run locally:
+
+```bash
+git clone https://github.com/tbeack/fsd.git ~/.claude/plugins/fsd
+bash ~/.claude/plugins/fsd/install.sh
+```
+
+The script checks prerequisites, clones (or updates) the plugin, runs tests, validates content, and checks Claude Code registration.
+
+### Manual install
+
+#### 1. Clone the plugin
 
 ```bash
 git clone https://github.com/tbeack/fsd.git ~/.claude/plugins/fsd
 ```
 
-Restart Claude Code. On session start you'll see:
+#### 2. Register with Claude Code
+
+If Claude Code doesn't auto-discover plugins in `~/.claude/plugins/`, add the plugin path to your Claude Code settings:
+
+```bash
+# Open Claude Code settings
+claude config
+
+# Or manually add to ~/.claude/settings.json
+```
+
+Add FSD to the `plugins` array:
+
+```json
+{
+  "plugins": [
+    "~/.claude/plugins/fsd"
+  ]
+}
+```
+
+#### 3. Verify installation
+
+Restart Claude Code (or start a new session). You should see:
 
 ```
 FSD Framework Active
@@ -45,11 +93,67 @@ AGENTS (2 active)
 Commands: /fsd:list, /fsd:add, /fsd:init, /fsd:validate
 ```
 
-## Requirements
+Run `/fsd:validate` to confirm all content passes schema validation.
 
-- Claude Code CLI
-- Node.js 18+
-- No npm dependencies (uses only built-in `fs`, `path`, `assert`)
+#### 4. (Optional) Initialize a project
+
+In any project directory, run:
+
+```
+/fsd:init
+```
+
+This creates a `.fsd/` directory for project-specific skills, agents, commands, and configuration. Commit it to git so your team shares the same setup.
+
+## Updating
+
+### Pull latest changes
+
+Run the install script again (it detects existing installs and updates):
+
+```bash
+bash ~/.claude/plugins/fsd/install.sh
+```
+
+Or update manually:
+
+```bash
+cd ~/.claude/plugins/fsd
+git pull origin main
+```
+
+Restart Claude Code. Core content updates automatically -- your customizations in `~/.fsd/` and `.fsd/` are never touched.
+
+### Check for issues after update
+
+```
+/fsd:validate
+```
+
+If your overrides conflict with updated schemas, validation will flag them. Use `/fsd:list` to see which items override core (`[>]` indicator) and compare with `/fsd:diff` (planned for v0.3).
+
+### Pin to a specific version
+
+If you need stability, pin to a tagged release:
+
+```bash
+cd ~/.claude/plugins/fsd
+git checkout v0.2.0
+```
+
+### Upgrade guarantees
+
+- Core updates never modify files in `~/.fsd/` or `.fsd/`
+- Your overrides always take priority over core content
+- Import lock files (planned for v0.3) are in user space, unaffected by upgrades
+
+## Uninstalling
+
+```bash
+rm -rf ~/.claude/plugins/fsd
+```
+
+Remove the plugin entry from `~/.claude/settings.json` if you added one. Your user customizations in `~/.fsd/` and project spaces in `.fsd/` are preserved -- delete them manually if you want a clean removal.
 
 ## Commands
 
