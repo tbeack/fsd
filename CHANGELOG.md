@@ -4,6 +4,75 @@ All notable changes to FSD are documented in this file.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versions follow [Semantic Versioning](https://semver.org/).
 
+## Versioning
+
+FSD's public surface — the "API" that gets versioned — is:
+
+- **Commands** — `/fsd:*` and `/fsd-*` command names and behavior
+- **Skills** — skill names, activation behavior, and visible effects
+- **Config schema** — keys in `.fsd/config.yaml` and their semantics
+- **`.fsd/` project contract** — the top-level name (`.fsd/`), required layout, reserved filenames
+- **Script CLI entry points** — argument signatures for `init.js`, `add.js`, `list.js`, `validate.js`, `restructure.js`
+- **Programmatic module exports** — functions exported from `plugin/scripts/*.js`
+
+### Bump rules
+
+| Change | Bump |
+|---|---|
+| Removed or renamed command, skill, or exported function | MAJOR |
+| Breaking config schema change (removed key, semantic change to an existing key) | MAJOR |
+| Changed `.fsd/` top-level name or required structure contract | MAJOR |
+| Removed or renamed required CLI argument | MAJOR |
+| New command or skill | MINOR |
+| New config key, backward-compatible | MINOR |
+| New optional CLI argument | MINOR |
+| Additive change to exported function signatures (new optional params) | MINOR |
+| Internal refactor with identical user-visible behavior | PATCH |
+| Bug fix | PATCH |
+| Documentation-only change | PATCH |
+| Test-only change | PATCH |
+
+### Pre-1.0 notice
+
+While version < 1.0, the **command surface**, **skill surface**, and **project-level `.fsd/config.yaml` schema** are treated as stable as of 0.2.0 — breaking changes there will still bump MAJOR. Internal script APIs and advanced/undocumented config may evolve in minor releases; each such change is recorded under `Changed` or `Removed`.
+
+### Source of truth
+
+The authoritative version lives in `plugin/.claude-plugin/plugin.json`. The README roadmap tracks what's planned for future versions. This CHANGELOG records what shipped.
+
+---
+
+## [0.3.0] - 2026-04-22
+
+### Added
+
+- **Configurable project directory structure** (FSD-003) — new `structure:` section in `.fsd/config.yaml` lets users rename the `skills/`, `agents/`, and `commands/` subdirectories individually. Partial overrides supported; unset keys fall back to defaults.
+  - `getStructure(config)` helper in `scripts/config.js` with partial-override semantics
+  - `DEFAULT_STRUCTURE` exported constant
+  - `validateStructure()` in `scripts/validator.js` rejects unknown kinds, path separators, leading dots, reserved names (`config.yaml`, `.state.yaml`), and aliases (two kinds pointing at the same directory)
+- **`/fsd-restructure` skill** — rename content-kind directories safely after install. Preview-first (rename ops + stale-reference detection), confirmation-gated, surgical `config.yaml` rewrite. Safety rules: refuses target-already-exists, reserved names, aliases, and (without `--force`) uncommitted changes under `.fsd/`. Flags stale references in content bodies but does **not** auto-rewrite user-authored prose.
+- **`/fsd-add-task` skill** — manages entries in `planning/to do/todo.md` with auto-incremented `FSD-NNN` numbering. Defaults to quick-add (single-line bullet); `--detail` flag creates a full `task-fsd-NNN.md` workup with source / summary / assessment / plan / acceptance-criteria sections.
+- **`scripts/restructure.js`** — new module exporting `previewRestructure`, `applyRestructure`, `rewriteConfigStructure`, `findStaleReferences`; includes CLI entry point.
+- **New test file `test-restructure.js`** — 16 integration tests covering preview, apply, config rewrite, stale-reference detection, and idempotency.
+- **+34 unit tests** across `test-config.js`, `test-validator.js`, `test-loader.js`, `test-init.js`, `test-add.js` covering structure-driven behavior.
+
+### Changed
+
+- **`scripts/loader.js`** — `scanSkills` / `scanAgents` / `scanCommands` now accept an optional `dirName` parameter (defaults preserve the previous literal); `loadContent` resolves structure once from merged config and passes dir names into the scan functions. Fully backward-compatible — callers without `dirName` get the legacy behavior.
+- **`scripts/add.js`** — `addContent` accepts an optional `config` parameter; the CLI entry point loads config first so project-level `structure:` overrides are honored automatically.
+- **`scripts/init.js`** — subdirectory scaffold now loops over `getStructure(config)` rather than three hardcoded `mkdirSync` calls; `CONFIG_TEMPLATE` includes a commented `structure:` section documenting defaults.
+- **Repo layout** (FSD-002) — plugin content relocated under `plugin/` to match Claude Code's marketplace plugin layout. Adds `.claude-plugin/marketplace.json` and `plugin/.claude-plugin/plugin.json`.
+- **Planning docs location** (FSD-012) — `docs/plans/` renamed to `planning/to do/` for a shorter top-level name; relative links updated throughout.
+- **Documentation** — README Configuration section now documents `structure:` with an example and links to `/fsd-restructure`; `plugin/commands/init.md` mentions configurable kinds and the restructure skill; `planning/2026-03-02-fsd-framework-design.md` annotated to clarify directory names are configurable.
+
+### Compatibility
+
+Fully backward-compatible at the user level. No migration required:
+
+- Configs without `structure:` → loader uses the previous hardcoded defaults (`skills`, `agents`, `commands`)
+- `addContent({type, name, project})` called without the new optional `config` parameter still works (falls back to defaults)
+- Existing `.fsd/` projects continue to function at v0.3.0 with no edits
+
 ---
 
 ## [0.2.0] - 2026-03-26

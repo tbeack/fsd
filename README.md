@@ -1,5 +1,7 @@
 # FSD — Full Stack Development Framework
 
+**Version 0.3.0** — released 2026-04-22 · [Changelog](./CHANGELOG.md)
+
 A multi-layer meta-framework plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with schema-validated skills, agents, and commands. Content is resolved across multiple layers so you can customize or override anything without touching the plugin itself.
 
 ## What It Does
