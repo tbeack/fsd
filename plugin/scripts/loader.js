@@ -4,7 +4,13 @@
 const fs = require('fs');
 const path = require('path');
 const { parseYaml } = require(path.join(__dirname, 'yaml-parser.js'));
-const { validateSkill, validateAgent, validateCommand } = require(path.join(__dirname, 'validator.js'));
+const {
+  validateSkill,
+  validateAgent,
+  validateCommand,
+  ARTIFACT_VALIDATORS,
+  STORAGE_KINDS,
+} = require(path.join(__dirname, 'validator.js'));
 const { getStructure } = require(path.join(__dirname, 'config.js'));
 
 /**
@@ -131,6 +137,63 @@ function scanCommands(baseDir, layer, dirName = 'commands') {
 }
 
 /**
+ * Scan a storage-kind artifact directory for `.md` files and validate each.
+ * On-demand: NOT used by loadContent. Storage kinds are passive data — they
+ * are not loaded into session context, only inspected when explicitly requested
+ * (e.g., by `/fsd:validate --artifacts`).
+ *
+ * Reads `fsdDir/dirName/*.md`, skipping `.gitkeep` and any non-`.md` files.
+ * For each file: extracts frontmatter, runs the kind-specific validator, and
+ * checks that the filename stem matches `meta.id` (mismatch is a hard error
+ * appended to the validation result).
+ *
+ * @param {Object} opts
+ * @param {string} opts.fsdDir   - Project `.fsd/` directory
+ * @param {string} opts.kind     - One of STORAGE_KINDS ('spec'|'plan'|'research')
+ * @param {string} opts.dirName  - Resolved directory name from config.structure[kind]
+ * @returns {Array<{ id: string, title: string, status: string, kind: string, path: string, validation: Object }>}
+ */
+function scanArtifacts({ fsdDir, kind, dirName }) {
+  const validator = ARTIFACT_VALIDATORS[kind];
+  if (!validator) {
+    throw new Error(`scanArtifacts: unknown storage kind "${kind}" (expected one of ${STORAGE_KINDS.join(', ')})`);
+  }
+
+  const dir = path.join(fsdDir, dirName);
+  if (!fs.existsSync(dir)) return [];
+
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const artifacts = [];
+
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    if (!entry.name.endsWith('.md')) continue;
+
+    const filePath = path.join(dir, entry.name);
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const fm = extractFrontmatter(content);
+    const validation = validator(fm);
+
+    const stem = path.basename(entry.name, '.md');
+    if (fm.id && fm.id !== stem) {
+      validation.errors.push(`id: "${fm.id}" does not match filename stem "${stem}"`);
+      validation.valid = false;
+    }
+
+    artifacts.push({
+      id: fm.id || stem,
+      title: fm.title || '',
+      status: fm.status || '',
+      kind,
+      path: filePath,
+      validation,
+    });
+  }
+
+  return artifacts;
+}
+
+/**
  * Load and merge content from three layers with name-based shadowing.
  * Scans core -> user -> project; later layers overwrite earlier by name.
  * Filters out items matching config.disabled entries.
@@ -189,4 +252,4 @@ function loadContent({ corePath, userPath, projectPath, config }) {
   return { skills, agents, commands, validationSummary };
 }
 
-module.exports = { loadContent, scanSkills, scanAgents, scanCommands, extractFrontmatter };
+module.exports = { loadContent, scanSkills, scanAgents, scanCommands, scanArtifacts, extractFrontmatter };

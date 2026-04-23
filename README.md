@@ -209,6 +209,15 @@ Run schema validation across all layers:
 /fsd:validate --commands
 ```
 
+Storage-kind artifacts (`.fsd/spec/`, `.fsd/plan/`, `.fsd/research/`) are validated on demand only — they are not loaded at session start. Pass an artifact filter to scan them:
+
+```
+/fsd:validate --artifacts            # all three storage kinds
+/fsd:validate --specs                # specs only
+/fsd:validate --plans                # plans only
+/fsd:validate --research             # research only
+```
+
 Reports errors and warnings per item. Exit code 1 if any errors found.
 
 ## Configuration
@@ -285,6 +294,79 @@ Optional: `color` (string)
 Required fields: `name` (string, `fsd:` prefix recommended), `description` (string)
 
 Optional: `argument-hint` (string)
+
+### Artifact Schemas
+
+Storage-kind artifacts (`spec`, `plan`, `research`) are markdown files with YAML frontmatter. The framework does not load them at session start — they are passive data, scanned on demand by `/fsd:validate --artifacts` and consumed by the corresponding authoring skills (`/fsd-spec`, `/fsd-plan`, `/fsd-research`).
+
+**Common required fields** (all three kinds):
+
+- `project` — non-empty string (free-form, preserves human casing)
+- `id` — kebab-case, must match the filename stem (e.g. `id: auth-v2` lives in `auth-v2.md`)
+- `title` — non-empty string
+- `status` — one of `draft`, `active`, `archived`
+- `created` — ISO 8601 date (`YYYY-MM-DD`)
+
+**Common optional fields:** `updated` (ISO date), `tags` (kebab-case array), `related` (cross-refs in the form `<spec|plan|research>/<kebab-id>`).
+
+**Spec example** (`.fsd/spec/auth-v2.md`):
+
+```yaml
+---
+project: My Project
+id: auth-v2
+title: Auth v2 Specification
+status: draft
+created: 2026-04-22
+approved: false
+supersedes:
+  - auth-v1
+related:
+  - plan/auth-v2-migration
+---
+```
+
+Spec-only optional fields: `approved` (boolean), `supersedes` (array of spec ids).
+
+**Plan example** (`.fsd/plan/auth-v2-migration.md`):
+
+```yaml
+---
+project: My Project
+id: auth-v2-migration
+title: Auth v2 Migration Plan
+status: active
+created: 2026-04-22
+task: FSD-042
+estimate: ~3 days
+depends_on:
+  - infra-bootstrap
+related:
+  - spec/auth-v2
+---
+```
+
+Plan-only optional fields: `task` (string, often an FSD-NNN reference), `depends_on` (array of plan ids), `estimate` (string).
+
+**Research example** (`.fsd/research/threat-model.md`):
+
+```yaml
+---
+project: My Project
+id: threat-model
+title: Threat Model Research
+status: draft
+created: 2026-04-22
+sources:
+  - https://owasp.org/www-project-top-ten/
+  - https://example.com/internal-postmortem
+conclusion: Token rotation must precede session-cookie hardening.
+---
+```
+
+Research-only optional fields: `sources` (array of http(s) URLs), `conclusion` (short string).
+
+Run `/fsd:validate --artifacts` to check schema compliance across all artifact dirs in the current `.fsd/`.
 
 ## Core Skills
 

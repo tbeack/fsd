@@ -25,4 +25,6 @@ Storage kinds (artifacts produced by the corresponding skills):
 
 All six directory names are configurable via the `structure:` section in `config.yaml`. To change any of them safely after init, use `/fsd-restructure` — it previews renames, flags stale references, and rewrites config.
 
+Files in the storage-kind directories follow a documented frontmatter schema (see the **Artifact Schemas** section in the README). Use `/fsd:validate --artifacts` to check them on demand.
+
 If `.fsd/` already exists, tell the user and suggest `/fsd:config` to view or edit the existing configuration.

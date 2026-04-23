@@ -5,7 +5,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { loadContent } = require(path.join(__dirname, '..', 'scripts', 'loader.js'));
+const { loadContent, scanArtifacts } = require(path.join(__dirname, '..', 'scripts', 'loader.js'));
 
 function mkTmpDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'fsd-loader-'));
@@ -234,6 +234,125 @@ function cleanUp(...dirs) {
     config: {},
   });
   assert.strictEqual(result.skills.length, 0, 'storage kinds must be invisible to the loader');
+  cleanUp(coreDir);
+}
+
+// --- scanArtifacts (FSD-004) ---
+
+function mkArtifactProject() {
+  const root = mkTmpDir();
+  for (const k of ['spec', 'plan', 'research']) {
+    fs.mkdirSync(path.join(root, k), { recursive: true });
+    fs.writeFileSync(path.join(root, k, '.gitkeep'), '');
+  }
+  return root;
+}
+
+// Test 12: scanArtifacts returns empty array when only .gitkeep present
+{
+  const root = mkArtifactProject();
+  const r = scanArtifacts({ fsdDir: root, kind: 'spec', dirName: 'spec' });
+  assert.deepStrictEqual(r, []);
+  cleanUp(root);
+}
+
+// Test 13: scanArtifacts finds .md files, skips .gitkeep and non-md files
+{
+  const root = mkArtifactProject();
+  fs.writeFileSync(
+    path.join(root, 'spec', 'auth-v2.md'),
+    `---\nproject: T\nid: auth-v2\ntitle: Auth\nstatus: draft\ncreated: 2026-04-22\n---\nbody`,
+  );
+  fs.writeFileSync(path.join(root, 'spec', 'notes.txt'), 'ignored');
+  const r = scanArtifacts({ fsdDir: root, kind: 'spec', dirName: 'spec' });
+  assert.strictEqual(r.length, 1);
+  assert.strictEqual(r[0].id, 'auth-v2');
+  assert.strictEqual(r[0].kind, 'spec');
+  assert.strictEqual(r[0].validation.valid, true);
+  cleanUp(root);
+}
+
+// Test 14: scanArtifacts attaches validation per file
+{
+  const root = mkArtifactProject();
+  fs.writeFileSync(
+    path.join(root, 'plan', 'broken.md'),
+    `---\nproject: T\nid: broken\ntitle: X\nstatus: nonsense\ncreated: 2026-04-22\n---\n`,
+  );
+  const r = scanArtifacts({ fsdDir: root, kind: 'plan', dirName: 'plan' });
+  assert.strictEqual(r.length, 1);
+  assert.strictEqual(r[0].validation.valid, false);
+  assert.ok(r[0].validation.errors.some(e => e.startsWith('status:')));
+  cleanUp(root);
+}
+
+// Test 15: filename/id mismatch becomes a validation error
+{
+  const root = mkArtifactProject();
+  fs.writeFileSync(
+    path.join(root, 'research', 'on-disk-name.md'),
+    `---\nproject: T\nid: declared-different\ntitle: R\nstatus: draft\ncreated: 2026-04-22\n---\n`,
+  );
+  const r = scanArtifacts({ fsdDir: root, kind: 'research', dirName: 'research' });
+  assert.strictEqual(r.length, 1);
+  assert.strictEqual(r[0].validation.valid, false);
+  assert.ok(
+    r[0].validation.errors.some(e => e.includes('does not match filename stem "on-disk-name"')),
+    `expected mismatch error; got ${r[0].validation.errors.join('; ')}`,
+  );
+  cleanUp(root);
+}
+
+// Test 16: scanArtifacts honors a renamed dir from config.structure
+{
+  const root = mkArtifactProject();
+  // Simulate `structure.spec: specifications` — write into a different dir name
+  fs.mkdirSync(path.join(root, 'specifications'), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, 'specifications', 'foo.md'),
+    `---\nproject: T\nid: foo\ntitle: Foo\nstatus: draft\ncreated: 2026-04-22\n---\n`,
+  );
+  const r = scanArtifacts({ fsdDir: root, kind: 'spec', dirName: 'specifications' });
+  assert.strictEqual(r.length, 1);
+  assert.strictEqual(r[0].id, 'foo');
+  cleanUp(root);
+}
+
+// Test 17: scanArtifacts on nonexistent dir returns []
+{
+  const r = scanArtifacts({ fsdDir: '/nonexistent', kind: 'spec', dirName: 'spec' });
+  assert.deepStrictEqual(r, []);
+}
+
+// Test 18: scanArtifacts rejects unknown kind
+{
+  let threw = false;
+  try {
+    scanArtifacts({ fsdDir: '/tmp', kind: 'widgets', dirName: 'widgets' });
+  } catch (e) {
+    threw = true;
+    assert.ok(e.message.includes('widgets'));
+  }
+  assert.ok(threw, 'expected throw for unknown kind');
+}
+
+// Test 19: loadContent output unchanged — artifacts never appear in scan results
+// Defensive regression: even with .md files in storage dirs, loadContent ignores them.
+{
+  const coreDir = mkTmpDir();
+  for (const kind of ['spec', 'plan', 'research']) {
+    fs.mkdirSync(path.join(coreDir, kind), { recursive: true });
+    fs.writeFileSync(
+      path.join(coreDir, kind, 'sample.md'),
+      `---\nproject: T\nid: sample\ntitle: x\nstatus: draft\ncreated: 2026-04-22\n---\n`,
+    );
+  }
+  const r = loadContent({ corePath: coreDir, userPath: '/nonexistent', projectPath: '/nonexistent', config: {} });
+  assert.strictEqual(r.skills.length, 0);
+  assert.strictEqual(r.agents.length, 0);
+  assert.strictEqual(r.commands.length, 0);
+  // No "artifacts" key on loadContent return shape
+  assert.strictEqual(r.artifacts, undefined);
   cleanUp(coreDir);
 }
 
