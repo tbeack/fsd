@@ -1,6 +1,6 @@
 # FSD — Full Stack Development Framework
 
-**Version 0.3.0** — released 2026-04-22 · [Changelog](./CHANGELOG.md)
+**Version 0.4.0** — released 2026-04-22 · [Changelog](./CHANGELOG.md)
 
 A multi-layer meta-framework plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with schema-validated skills, agents, and commands. Content is resolved across multiple layers so you can customize or override anything without touching the plugin itself.
 
@@ -234,13 +234,18 @@ required:
   - "skills/code-review"
 
 # Content-kind → directory mapping (partial override; unset keys default)
-# Rename the directories FSD scans for skills, agents, and commands.
-# Use /fsd-restructure to change these safely after install — it renames
-# on-disk dirs, updates this config, and flags stale references.
+# Use /fsd-restructure to rename any of these safely after install —
+# it physically renames the directory, updates this config, and flags
+# stale references in content bodies.
 structure:
+  # Scannable kinds (loaded and activated by the framework):
   # skills: capabilities     # renames .fsd/skills/ → .fsd/capabilities/
   # agents: bots
   # commands: actions
+  # Storage kinds (artifacts written by /fsd-spec, /fsd-plan, /fsd-research):
+  # spec: specifications
+  # plan: plans
+  # research: notes
 
 # Team conventions (merges recursively across layers)
 conventions:

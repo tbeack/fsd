@@ -1,6 +1,6 @@
 ---
 name: fsd-restructure
-description: Rename content-kind directories (skills/agents/commands) inside the project's `.fsd/` space and update `config.yaml` so the loader, add, list, validate, and session-start hook all see the new layout. Use when the user wants to reshape their FSD project directory structure after install — e.g. rename `skills/` to `capabilities/`. Preview-first, confirmation-gated, flags stale references in content but does NOT auto-rewrite them.
+description: Rename content-kind directories inside the project's `.fsd/` space (scannable kinds skills/agents/commands, or storage kinds spec/plan/research) and update `config.yaml` so the loader, add, list, validate, session-start hook, and artifact-producing skills all see the new layout. Use when the user wants to reshape their FSD project directory structure after install — e.g. rename `skills/` to `capabilities/` or `spec/` to `specifications/`. Preview-first, confirmation-gated, flags stale references in content but does NOT auto-rewrite them.
 argument-hint: `[kind=newname ...]  [--apply]  [--force]`
 ---
 
@@ -13,7 +13,10 @@ You help the user rename content-kind directories inside `.fsd/` safely. **Alway
 - **Do not skip the preview step.** The preview surfaces errors and stale references that could break user content.
 - **Do not auto-rewrite the body of user files** that reference old directory names. Flag them in the confirmation step; let the user decide.
 - **Refuse to run** if the repo has uncommitted changes under `.fsd/` and the user didn't pass `--force`. Renaming directories in a dirty tree risks losing work.
-- **Only support the 3 known kinds**: `skills`, `agents`, `commands`. Adding new kinds is out of scope for this skill.
+- **Only support the 6 known kinds**:
+  - Scannable: `skills`, `agents`, `commands`
+  - Storage: `spec`, `plan`, `research`
+  Adding new kinds is out of scope for this skill.
 - **Never rename the top-level `.fsd/` directory itself.**
 
 ## Workflow

@@ -42,6 +42,33 @@ The authoritative version lives in `plugin/.claude-plugin/plugin.json`. The READ
 
 ---
 
+## [0.4.0] - 2026-04-22
+
+### Added
+
+- **Three new storage kinds under `.fsd/`** (FSD-013) — `spec/`, `plan/`, `research/`. Each is a configurable directory for artifacts produced by the corresponding (future) `fsd-spec` / `fsd-plan` / `fsd-research` skills.
+  - Scaffolded automatically by `/fsd:init`, each with a `.gitkeep` so git tracks them while empty.
+  - Fully configurable via `structure:` in `config.yaml` — same rename semantics as the existing scannable kinds.
+  - Renameable via `/fsd-restructure` — preview / apply / stale-reference flagging all work identically to renaming scannable kinds.
+- **`SCANNABLE_KINDS` / `STORAGE_KINDS` split** in `plugin/scripts/validator.js` — the public surface now distinguishes loadable content (`skills`, `agents`, `commands`) from artifact storage (`spec`, `plan`, `research`). `STRUCTURE_KEYS` remains the union.
+- **+13 tests across the suite** covering the new storage-kind behavior: validator acceptance, init scaffold with `.gitkeep`, `/fsd:add` rejection for storage kinds, restructure rename + alias detection across classes, and a defensive loader test that storage kinds can never be accidentally scanned.
+
+### Changed
+
+- **`DEFAULT_STRUCTURE`** — extended to 6 keys (added `spec`, `plan`, `research`).
+- **`CONFIG_TEMPLATE`** in `init.js` — `structure:` section now groups scannable and storage kinds with separate headers and lists all 6 commented defaults.
+- **`/fsd:add`** now explicitly rejects storage kinds with a message pointing to the owning skill: `"spec content is managed by the /fsd-spec skill, not /fsd:add"`. Prevents users from accidentally creating spec/plan/research entries through the wrong authoring path.
+- **`rewriteConfigStructure`** in `scripts/restructure.js` — iterates `STRUCTURE_KEYS` dynamically when emitting the all-defaults commented example, so future additions propagate automatically without code changes.
+- **`/fsd-restructure` skill** (`plugin/skills/fsd-restructure/SKILL.md`) — description, argument-hint usage, and Guardrails section updated to reflect the 6-kind scope (was "3 known kinds").
+- **`plugin/commands/init.md`** — post-init report now lists all 6 subdirectories, grouped into scannable vs storage classes with short explanations of each.
+- **`README.md`** — Configuration section's `structure:` example extends to all 6 kinds, grouped by class.
+
+### Compatibility
+
+No migration required. This is the first release of the `spec`/`plan`/`research` kinds, and no v0.3.0 projects exist in the wild — fresh `/fsd:init` produces the 6-dir layout directly. The `loader.js` implementation is unchanged; it explicitly names only scannable kinds, so storage dirs stay invisible to scan/activation by design. Existing test fixtures and callers of `previewRestructure` / `applyRestructure` that pass full `structure:` objects (e.g. via `getStructure`) work without modification.
+
+---
+
 ## [0.3.0] - 2026-04-22
 
 ### Added

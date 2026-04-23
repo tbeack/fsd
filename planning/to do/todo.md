@@ -14,3 +14,4 @@
 - [ ] `FSD-010` — Create a new `fsd-research` skill
 - [ ] `FSD-011` — Create a new `fsd-ship` skill
 - [x] `FSD-012` — Change directory naming convention from `/docs/plans` to `/planning` ([task-fsd-012](task-fsd-012.md))
+- [x] `FSD-013` — Add `spec/`, `plan/`, `research/` storage kinds to `.fsd/` structure (extends FSD-003) ([task-fsd-013](task-fsd-013.md))
