@@ -42,6 +42,45 @@ The authoritative version lives in `plugin/.claude-plugin/plugin.json`. The READ
 
 ---
 
+## [0.6.0] - 2026-04-23
+
+### Added
+
+- **Project context artifacts** (FSD-005) — `planning/PROJECT.md` and `planning/ROADMAP.md` capture project framing (identity, scope, tech context, success metrics, anti-goals, versioned milestones → numbered phases) once at the start of a project, and every downstream skill reads from them.
+  - `validateProject` + `validateRoadmap` in `plugin/scripts/validator.js` enforce the frontmatter schemas; both return the familiar `{ valid, errors, warnings }` shape.
+  - PROJECT.md required fields: the common artifact vocabulary (`project`, `id` kebab-case, `title`, `status`, `created`) plus optional `vision` (string) and `target_users` (array of strings).
+  - ROADMAP.md adds `version` (semver-like, validated by the new `SEMVER_LIKE` regex) and `current_milestone` (string id matching a `## Milestone <id>` heading in the body). The validator enforces format only — cross-ref resolution will land with `/fsd-roadmap` (FSD-007).
+- **`/fsd-new-project` skill** at `plugin/skills/fsd-new-project/SKILL.md` — interactive one-time kickoff. Gathers PROJECT + ROADMAP context one question at a time, validates the rendered frontmatter, writes both files, and hard-refuses to overwrite either one if already present.
+- **`plugin/scripts/new-project.js`** — backing module exporting `renderProject`, `renderRoadmap`, `writeProjectFiles`, and the canonical filenames. The skill delegates its Step 4 write to this module so the logic is testable in isolation.
+- **`loadProjectContext({ planningDir })`** in `plugin/scripts/loader.js` — on-demand reader returning `{ project, roadmap, validation }` with `null` for absent files. Never throws on missing files.
+- **Session-start project header** — when both PROJECT.md and ROADMAP.md are present and pass validation, the session-start hook prints a single line: `Project: <name> — Milestone: <current> (v<version>)`. Header is hidden on any absence or schema failure so session start never emits scary errors.
+- **New test files** — `plugin/tests/test-project-context.js` (22 tests: validators, `loadProjectContext`, `writeProjectFiles` happy path + refuse-to-overwrite, round-trip via rendered output, `loadContent` surfaces `projectContext`) and `plugin/tests/test-fsd-new-project.js` (3 integration tests running the backing script via `execFileSync` + skill file sanity check).
+- **+1 test in `test-init.js`** — asserts the post-init message in `plugin/commands/init.md` recommends `/fsd-new-project` as the next step.
+
+### Changed
+
+- **`loadContent` return shape is additively extended** — now returns `{ skills, agents, commands, validationSummary, projectContext }`. `projectContext` is the result of `loadProjectContext` scoped to the repo's `planning/` dir (sibling of `.fsd/`). Prior fields are unchanged; callers that ignore the new field are unaffected.
+- **`plugin/scripts/session-start-loader.js`** — destructures the new `projectContext` from `loadContent` and emits the project header when valid.
+- **`plugin/commands/init.md`** — post-init message now points at `/fsd-new-project` as the recommended follow-up, with a one-sentence rationale about shared context for downstream skills.
+- **`README.md`** — new **Project Context** subsection under "Content Schemas" documents the PROJECT.md and ROADMAP.md schemas with worked examples. Commands section describes `/fsd-new-project` and its relationship to `/fsd:init`.
+- **`plugin/scripts/validator.js` exports extended** — adds `validateProject`, `validateRoadmap`, and the `SEMVER_LIKE` regex constant alongside the existing artifact exports.
+
+### Compatibility
+
+Fully backward-compatible. No migration required:
+
+- Existing repos without `planning/PROJECT.md` or `planning/ROADMAP.md` continue to work; the session-start header simply hides itself until both files exist and validate.
+- `loadContent` callers that don't destructure the new `projectContext` key are unaffected.
+- The plain `/fsd:validate` (and `--artifacts`) flows are unchanged — PROJECT.md and ROADMAP.md are validated on demand by `loadProjectContext` or the session-start header, not via the artifact scanner.
+
+### Out of scope (intentional, follow-up work)
+
+- `/fsd-roadmap` authoring/maintenance skill for editing the roadmap mid-project (FSD-007).
+- Cross-file reference resolution (verifying `current_milestone` points at a real heading, verifying phase ids match real specs/plans) — validator enforces format only, mirroring the FSD-004 artifact-schema stance.
+- Multi-project support in one repo (one PROJECT.md per repo for now).
+
+---
+
 ## [0.5.0] - 2026-04-23
 
 ### Added
