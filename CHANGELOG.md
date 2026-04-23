@@ -42,6 +42,42 @@ The authoritative version lives in `plugin/.claude-plugin/plugin.json`. The READ
 
 ---
 
+## [0.7.0] - 2026-04-23
+
+### Added
+
+- **`/fsd-roadmap` skill** (FSD-007) — mid-project maintenance for `planning/ROADMAP.md`. Dispatches five surgical operations that edit the file in place while preserving user-authored goal prose and re-validating the schema on every write:
+  - `add-milestone` — appends a new `## Milestone <id>` block; optional `setCurrent` flips frontmatter `current_milestone` and `version` to the new milestone's values.
+  - `add-phase` — inserts a new `### Phase <id> — <title>` block into a named milestone without disturbing other milestones.
+  - `advance` — marks the current milestone shipped via a `**Status:** shipped (YYYY-MM-DD)` body line, flips `current_milestone` to the next milestone in source order, and adopts that milestone's `**Version:**` into frontmatter `version`. Errors when the current milestone is the last one (user must `/fsd-roadmap add-milestone` first).
+  - `complete-phase` — marks a named phase shipped via a body status line.
+  - `bump-version` — frontmatter `version:` bump for patch-style increments mid-milestone; rejects non-semver input and no-op bumps.
+  - `advance` and `complete-phase` are idempotent — re-running on an already-shipped section returns `{ ok: true, written: false }` with a reason instead of double-inserting status lines.
+- **`plugin/scripts/roadmap.js`** — backing module exporting `parseRoadmap`, `readRoadmap`, `writeRoadmapAtomic`, `rewriteFrontmatter`, `addMilestone`, `addPhase`, `advance`, `completePhase`, `bumpVersion`, and `today`. The parser records line-range pairs for frontmatter and every milestone/phase section, so each op splices the file directly — no full re-render. Every op updates frontmatter `updated:` to today and re-validates via `validateRoadmap` before touching disk; failed writes leave the file on disk unchanged (atomic tmp-file + rename).
+- **CLI entry point** on `roadmap.js` — `node scripts/roadmap.js <roadmapPath> <op> [--key=value ...]` prints a single line of JSON (`{ ok, reason?, written? }`) and exits 0 on success, 1 on op failure, 2 on unknown op. The skill's Step 5 delegates via this surface.
+- **New test files** — `plugin/tests/test-roadmap.js` (25 tests: parser coverage for minimal/multi-milestone/multi-phase/shipped markers/malformed frontmatter; happy paths and refusal paths for all five ops; round-trip validation across a 5-op sequence; byte-preservation of wonky user-authored goal prose; atomicity under injected validation failure; two CLI-entry integration tests) and `plugin/tests/test-fsd-roadmap.js` (8 integration tests: each op via `execFileSync`, CLI failure exit codes, SKILL.md sanity including name, op coverage, and refuse-when-missing documentation).
+
+### Changed
+
+- **README.md** — Commands section documents `/fsd-roadmap` with a per-op table; Project Context section updated to frame the pair as "create once, edit many" and point at `/fsd-roadmap` as the ongoing-edits surface.
+
+### Compatibility
+
+Fully backward-compatible. No migration required:
+
+- `validateRoadmap` and the `fsd-new-project` render output are both unchanged — the new `**Status:** shipped (YYYY-MM-DD)` body marker is additive content, not a schema field. Existing repos (only this one, since 0.6.0 shipped today) work with no edits.
+- `loadContent` / `loadProjectContext` return shape is unchanged. Session-start header behavior is unchanged.
+- `/fsd-roadmap` is additive — no existing skill or command behavior changes.
+
+### Out of scope (intentional, follow-up work)
+
+- Renaming or reordering existing milestones/phases — users edit the file directly; any follow-up skill would want full parse+render with preservation guarantees.
+- Editing milestone/phase goal prose — the skill only adds structure and status markers. Users hand-edit prose.
+- Cross-file reference resolution — e.g., checking that a phase id matches a real plan in `.fsd/plan/`. Mirrors the FSD-004/005 stance: format-only validation.
+- Multi-roadmap support.
+
+---
+
 ## [0.6.0] - 2026-04-23
 
 ### Added
