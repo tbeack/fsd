@@ -3,7 +3,7 @@
 
 const assert = require('assert');
 const path = require('path');
-const { validateSkill, validateAgent, validateCommand } = require(
+const { validateSkill, validateAgent, validateCommand, validateStructure } = require(
   path.join(__dirname, '..', 'scripts', 'validator.js')
 );
 
@@ -169,6 +169,93 @@ const { validateSkill, validateAgent, validateCommand } = require(
     description: 'Something'
   });
   assert.strictEqual(result.valid, false);
+}
+
+// --- Structure validation ---
+
+// Test 16: undefined structure is valid (partial override, fully absent)
+{
+  const result = validateStructure(undefined);
+  assert.strictEqual(result.valid, true);
+  assert.strictEqual(result.errors.length, 0);
+}
+
+// Test 17: empty structure object is valid
+{
+  const result = validateStructure({});
+  assert.strictEqual(result.valid, true);
+}
+
+// Test 18: valid partial structure passes
+{
+  const result = validateStructure({ skills: 'capabilities' });
+  assert.strictEqual(result.valid, true);
+}
+
+// Test 19: valid full structure passes
+{
+  const result = validateStructure({ skills: 'a', agents: 'b', commands: 'c' });
+  assert.strictEqual(result.valid, true);
+}
+
+// Test 20: unknown content kind rejected
+{
+  const result = validateStructure({ widgets: 'things' });
+  assert.strictEqual(result.valid, false);
+  assert.ok(result.errors.some(e => e.includes('widgets')));
+}
+
+// Test 21: slash in value rejected
+{
+  const result = validateStructure({ skills: 'sub/dir' });
+  assert.strictEqual(result.valid, false);
+  assert.ok(result.errors.some(e => e.includes('slash')));
+}
+
+// Test 22: backslash in value rejected
+{
+  const result = validateStructure({ skills: 'sub\\dir' });
+  assert.strictEqual(result.valid, false);
+}
+
+// Test 23: leading-dot value rejected
+{
+  const result = validateStructure({ skills: '.hidden' });
+  assert.strictEqual(result.valid, false);
+  assert.ok(result.errors.some(e => e.includes('.')));
+}
+
+// Test 24: empty string value rejected
+{
+  const result = validateStructure({ skills: '' });
+  assert.strictEqual(result.valid, false);
+}
+
+// Test 25: non-string value rejected
+{
+  const result = validateStructure({ skills: 42 });
+  assert.strictEqual(result.valid, false);
+}
+
+// Test 26: reserved name rejected
+{
+  const result = validateStructure({ skills: 'config.yaml' });
+  assert.strictEqual(result.valid, false);
+  assert.ok(result.errors.some(e => e.includes('reserved')));
+}
+
+// Test 27: alias (two kinds sharing a value) rejected
+{
+  const result = validateStructure({ skills: 'shared', agents: 'shared' });
+  assert.strictEqual(result.valid, false);
+  assert.ok(result.errors.some(e => e.includes('conflicts')));
+}
+
+// Test 28: array rejected (must be a mapping)
+{
+  const result = validateStructure(['a', 'b']);
+  assert.strictEqual(result.valid, false);
+  assert.ok(result.errors.some(e => e.includes('mapping')));
 }
 
 console.log('  All validator tests passed');

@@ -3,6 +3,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { loadConfig, resolveLayerPaths, getStructure } = require(path.join(__dirname, 'config.js'));
 
 const TEMPLATES = {
   skill: (name) => `---
@@ -80,22 +81,24 @@ const VALID_TYPES = ['skill', 'agent', 'command'];
  * @param {string} [opts.userPath] - User space path (~/.fsd/)
  * @param {string} [opts.projectPath] - Project space path (.fsd/)
  * @param {boolean} opts.project - If true, create in project space
+ * @param {Object} [opts.config] - Merged config (drives structure.{skills,agents,commands})
  * @returns {Object} { success: boolean, message: string, path: string }
  */
-function addContent({ type, name, userPath, projectPath, project }) {
+function addContent({ type, name, userPath, projectPath, project, config }) {
   if (!VALID_TYPES.includes(type)) {
     return { success: false, message: `Invalid type: "${type}". Must be one of: ${VALID_TYPES.join(', ')}` };
   }
 
   const baseDir = project ? projectPath : userPath;
+  const structure = getStructure(config || {});
   let targetPath;
 
   if (type === 'skill') {
-    targetPath = path.join(baseDir, 'skills', name, 'SKILL.md');
+    targetPath = path.join(baseDir, structure.skills, name, 'SKILL.md');
   } else if (type === 'agent') {
-    targetPath = path.join(baseDir, 'agents', `${name}.md`);
+    targetPath = path.join(baseDir, structure.agents, `${name}.md`);
   } else {
-    targetPath = path.join(baseDir, 'commands', `${name}.md`);
+    targetPath = path.join(baseDir, structure.commands, `${name}.md`);
   }
 
   if (fs.existsSync(targetPath)) {
@@ -121,10 +124,9 @@ if (require.main === module) {
     process.exit(1);
   }
 
-  const userPath = path.join(process.env.HOME || '~', '.fsd');
-  const projectPath = path.join(process.cwd(), '.fsd');
-
-  const result = addContent({ type, name, userPath, projectPath, project: isProject });
+  const paths = resolveLayerPaths();
+  const config = loadConfig(paths);
+  const result = addContent({ type, name, userPath: paths.userPath, projectPath: paths.projectPath, project: isProject, config });
   console.log(result.message);
   process.exit(result.success ? 0 : 1);
 }

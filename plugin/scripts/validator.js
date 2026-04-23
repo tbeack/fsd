@@ -94,4 +94,63 @@ function validateCommand(meta) {
   return { valid: errors.length === 0, errors, warnings };
 }
 
-module.exports = { validateSkill, validateAgent, validateCommand };
+const RESERVED_STRUCTURE_VALUES = new Set(['config.yaml', '.state.yaml']);
+const STRUCTURE_KEYS = ['skills', 'agents', 'commands'];
+
+/**
+ * Validate the `structure:` section of a config.
+ * `structure:` is a partial override map: any subset of the known kinds may be
+ * present; missing kinds fall back to defaults at resolution time.
+ *
+ * @param {Object|undefined} structure - The config.structure value, or undefined
+ * @returns {{ valid: boolean, errors: string[] }}
+ */
+function validateStructure(structure) {
+  const errors = [];
+
+  if (structure === undefined || structure === null) {
+    return { valid: true, errors };
+  }
+
+  if (typeof structure !== 'object' || Array.isArray(structure)) {
+    errors.push('structure: must be a mapping');
+    return { valid: false, errors };
+  }
+
+  const seenValues = new Map();
+
+  for (const key of Object.keys(structure)) {
+    if (!STRUCTURE_KEYS.includes(key)) {
+      errors.push(`structure.${key}: unknown content kind (expected one of ${STRUCTURE_KEYS.join(', ')})`);
+      continue;
+    }
+
+    const value = structure[key];
+
+    if (typeof value !== 'string' || value.length === 0) {
+      errors.push(`structure.${key}: must be a non-empty string`);
+      continue;
+    }
+    if (value.includes('/') || value.includes('\\')) {
+      errors.push(`structure.${key}: must be a single path segment (no slashes), got "${value}"`);
+      continue;
+    }
+    if (value.startsWith('.')) {
+      errors.push(`structure.${key}: must not start with "." (got "${value}")`);
+      continue;
+    }
+    if (RESERVED_STRUCTURE_VALUES.has(value)) {
+      errors.push(`structure.${key}: "${value}" is a reserved name`);
+      continue;
+    }
+    if (seenValues.has(value)) {
+      errors.push(`structure.${key}: "${value}" conflicts with structure.${seenValues.get(value)} (two kinds cannot share the same directory)`);
+      continue;
+    }
+    seenValues.set(value, key);
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+module.exports = { validateSkill, validateAgent, validateCommand, validateStructure, STRUCTURE_KEYS, RESERVED_STRUCTURE_VALUES };

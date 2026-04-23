@@ -2,4 +2,15 @@
 
 ## Backlog
 
-- [x] **FSD-001** — Add the `ignore` directory to `.gitignore`
+- [x] `FSD-001` — Add the `ignore` directory to `.gitignore`
+- [x] `FSD-002` — Fix plugin registration: FSD not active after installation ([2026-03-27_0001](../../ignore/issues/2026-03-27_0001.md))
+- [x] `FSD-003` — Make project directory structure config-driven + `/fsd-restructure` skill ([task-fsd-003](task-fsd-003.md))
+- [ ] `FSD-004` — Create schema for metadata on project files (spec.md, plan.md, roadmap.md, research.md, etc.)
+- [ ] `FSD-005` — Create `new-project` skill or hook → research best option
+- [ ] `FSD-006` — Create a new `fsd-spec` skill
+- [ ] `FSD-007` — Create a new `fsd-roadmap` skill
+- [ ] `FSD-008` — Create a new `fsd-plan` skill
+- [ ] `FSD-009` — Create a new `fsd-execute-plan` skill
+- [ ] `FSD-010` — Create a new `fsd-research` skill
+- [ ] `FSD-011` — Create a new `fsd-ship` skill
+- [x] `FSD-012` — Change directory naming convention from `/docs/plans` to `/planning` ([task-fsd-012](task-fsd-012.md))

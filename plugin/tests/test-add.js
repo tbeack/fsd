@@ -142,4 +142,39 @@ function mkTmpDir() {
   fs.rmSync(userDir, { recursive: true });
 }
 
+// Test 10: addContent routes skill to custom structure dir
+{
+  const projDir = mkTmpDir();
+  fs.mkdirSync(path.join(projDir, '.fsd'), { recursive: true });
+
+  const result = addContent({
+    type: 'skill',
+    name: 'my-cap',
+    projectPath: path.join(projDir, '.fsd'),
+    project: true,
+    config: { structure: { skills: 'capabilities' } },
+  });
+
+  assert.strictEqual(result.success, true);
+  assert.strictEqual(fs.existsSync(path.join(projDir, '.fsd', 'capabilities', 'my-cap', 'SKILL.md')), true);
+  assert.strictEqual(fs.existsSync(path.join(projDir, '.fsd', 'skills', 'my-cap', 'SKILL.md')), false);
+
+  fs.rmSync(projDir, { recursive: true });
+}
+
+// Test 11: addContent routes agent + command to custom structure dirs
+{
+  const projDir = mkTmpDir();
+  fs.mkdirSync(path.join(projDir, '.fsd'), { recursive: true });
+  const config = { structure: { agents: 'bots', commands: 'actions' } };
+
+  addContent({ type: 'agent', name: 'a1', projectPath: path.join(projDir, '.fsd'), project: true, config });
+  addContent({ type: 'command', name: 'c1', projectPath: path.join(projDir, '.fsd'), project: true, config });
+
+  assert.strictEqual(fs.existsSync(path.join(projDir, '.fsd', 'bots', 'a1.md')), true);
+  assert.strictEqual(fs.existsSync(path.join(projDir, '.fsd', 'actions', 'c1.md')), true);
+
+  fs.rmSync(projDir, { recursive: true });
+}
+
 console.log('  All add tests passed');

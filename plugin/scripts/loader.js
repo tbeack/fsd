@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { parseYaml } = require(path.join(__dirname, 'yaml-parser.js'));
 const { validateSkill, validateAgent, validateCommand } = require(path.join(__dirname, 'validator.js'));
+const { getStructure } = require(path.join(__dirname, 'config.js'));
 
 /**
  * Extract YAML frontmatter from a markdown file's content.
@@ -21,14 +22,15 @@ function extractFrontmatter(content) {
 
 /**
  * Scan a layer's skills directory for SKILL.md files.
- * Reads baseDir/skills/{skillName}/SKILL.md, extracts frontmatter, validates.
+ * Reads baseDir/<dirName>/{skillName}/SKILL.md, extracts frontmatter, validates.
  *
  * @param {string} baseDir - Layer base directory
  * @param {string} layer - Layer name ('core', 'user', 'project')
+ * @param {string} [dirName='skills'] - Subdirectory name from config.structure.skills
  * @returns {Array<{name: string, description: string, layer: string, path: string, validation: Object}>}
  */
-function scanSkills(baseDir, layer) {
-  const skillsDir = path.join(baseDir, 'skills');
+function scanSkills(baseDir, layer, dirName = 'skills') {
+  const skillsDir = path.join(baseDir, dirName);
   if (!fs.existsSync(skillsDir)) return [];
 
   const entries = fs.readdirSync(skillsDir, { withFileTypes: true });
@@ -58,14 +60,15 @@ function scanSkills(baseDir, layer) {
 
 /**
  * Scan a layer's agents directory for .md files.
- * Reads baseDir/agents/{name}.md, extracts frontmatter, validates.
+ * Reads baseDir/<dirName>/{name}.md, extracts frontmatter, validates.
  *
  * @param {string} baseDir - Layer base directory
  * @param {string} layer - Layer name ('core', 'user', 'project')
+ * @param {string} [dirName='agents'] - Subdirectory name from config.structure.agents
  * @returns {Array<{name: string, description: string, layer: string, path: string, validation: Object}>}
  */
-function scanAgents(baseDir, layer) {
-  const agentsDir = path.join(baseDir, 'agents');
+function scanAgents(baseDir, layer, dirName = 'agents') {
+  const agentsDir = path.join(baseDir, dirName);
   if (!fs.existsSync(agentsDir)) return [];
 
   const entries = fs.readdirSync(agentsDir, { withFileTypes: true });
@@ -93,14 +96,15 @@ function scanAgents(baseDir, layer) {
 
 /**
  * Scan a layer's commands directory for .md files.
- * Reads baseDir/commands/{name}.md, extracts frontmatter, validates.
+ * Reads baseDir/<dirName>/{name}.md, extracts frontmatter, validates.
  *
  * @param {string} baseDir - Layer base directory
  * @param {string} layer - Layer name ('core', 'user', 'project')
+ * @param {string} [dirName='commands'] - Subdirectory name from config.structure.commands
  * @returns {Array}
  */
-function scanCommands(baseDir, layer) {
-  const commandsDir = path.join(baseDir, 'commands');
+function scanCommands(baseDir, layer, dirName = 'commands') {
+  const commandsDir = path.join(baseDir, dirName);
   if (!fs.existsSync(commandsDir)) return [];
 
   const entries = fs.readdirSync(commandsDir, { withFileTypes: true });
@@ -146,22 +150,23 @@ function loadContent({ corePath, userPath, projectPath, config }) {
     { dir: projectPath, name: 'project' },
   ];
 
+  const structure = getStructure(config);
   const skillMap = new Map();
   const agentMap = new Map();
   const commandMap = new Map();
 
   for (const layer of layers) {
-    for (const skill of scanSkills(layer.dir, layer.name)) {
+    for (const skill of scanSkills(layer.dir, layer.name, structure.skills)) {
       skill.overrides = skillMap.has(skill.name);
       skillMap.set(skill.name, skill);
     }
 
-    for (const agent of scanAgents(layer.dir, layer.name)) {
+    for (const agent of scanAgents(layer.dir, layer.name, structure.agents)) {
       agent.overrides = agentMap.has(agent.name);
       agentMap.set(agent.name, agent);
     }
 
-    for (const cmd of scanCommands(layer.dir, layer.name)) {
+    for (const cmd of scanCommands(layer.dir, layer.name, structure.commands)) {
       cmd.overrides = commandMap.has(cmd.name);
       commandMap.set(cmd.name, cmd);
     }

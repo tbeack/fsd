@@ -231,6 +231,15 @@ disabled:
 required:
   - "skills/code-review"
 
+# Content-kind → directory mapping (partial override; unset keys default)
+# Rename the directories FSD scans for skills, agents, and commands.
+# Use /fsd-restructure to change these safely after install — it renames
+# on-disk dirs, updates this config, and flags stale references.
+structure:
+  # skills: capabilities     # renames .fsd/skills/ → .fsd/capabilities/
+  # agents: bots
+  # commands: actions
+
 # Team conventions (merges recursively across layers)
 conventions:
   commit_style: conventional
@@ -341,7 +350,7 @@ bash tests/run-tests.sh
 
 ## Roadmap
 
-See `docs/plans/2026-03-02-fsd-framework-design.md` for the full design and evolution roadmap.
+See `planning/2026-03-02-fsd-framework-design.md` for the full design and evolution roadmap.
 
 - **v0.2** (current) -- Schema validation, strategic config merge, /fsd:validate
 - **v0.3** -- Git-based import/export system for sharing content

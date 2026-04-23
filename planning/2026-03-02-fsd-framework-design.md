@@ -142,6 +142,8 @@ Personal customizations. Never touched by upgrades. Contains user-authored conte
 
 Team-shared content committed to git. Highest priority in resolution order.
 
+> **Note (FSD-003, 2026-04-22):** The `skills/`, `agents/`, and `commands/` directory names are configurable via `config.yaml`'s `structure:` section. The trees above show defaults. Use `/fsd-restructure` to rename them safely after init.
+
 ### Resolution Rules
 
 - **Name shadowing:** Content with the same name at a higher-priority layer fully replaces the lower-priority version. No merging.

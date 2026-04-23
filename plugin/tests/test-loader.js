@@ -140,4 +140,78 @@ function cleanUp(...dirs) {
   assert.deepStrictEqual(result.agents, []);
 }
 
+// Test 8: Loader reads skills from a custom structure directory name
+{
+  const coreDir = mkTmpDir();
+  // Write a skill into a "capabilities" dir instead of "skills"
+  const skillDir = path.join(coreDir, 'capabilities', 'my-skill');
+  fs.mkdirSync(skillDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(skillDir, 'SKILL.md'),
+    `---\nname: my-skill\ndescription: A skill in a renamed dir for testing purposes\n---\n\nbody`,
+  );
+
+  const config = { structure: { skills: 'capabilities' } };
+  const result = loadContent({ corePath: coreDir, userPath: '/nonexistent', projectPath: '/nonexistent', config });
+  assert.strictEqual(result.skills.length, 1);
+  assert.strictEqual(result.skills[0].name, 'my-skill');
+
+  // Sanity: without the override, the same tree finds nothing under 'skills/'
+  const resultDefault = loadContent({ corePath: coreDir, userPath: '/nonexistent', projectPath: '/nonexistent', config: {} });
+  assert.strictEqual(resultDefault.skills.length, 0);
+
+  cleanUp(coreDir);
+}
+
+// Test 9: Loader reads agents + commands from custom structure dirs
+{
+  const coreDir = mkTmpDir();
+  fs.mkdirSync(path.join(coreDir, 'bots'), { recursive: true });
+  fs.writeFileSync(
+    path.join(coreDir, 'bots', 'helper.md'),
+    `---\nname: helper\ndescription: helper agent\nmodel: sonnet\ntools: ["Read"]\n---\nbody`,
+  );
+  fs.mkdirSync(path.join(coreDir, 'actions'), { recursive: true });
+  fs.writeFileSync(
+    path.join(coreDir, 'actions', 'go.md'),
+    `---\nname: fsd:go\ndescription: do a thing\n---\nbody`,
+  );
+
+  const config = { structure: { agents: 'bots', commands: 'actions' } };
+  const result = loadContent({ corePath: coreDir, userPath: '/nonexistent', projectPath: '/nonexistent', config });
+  assert.strictEqual(result.agents.length, 1);
+  assert.strictEqual(result.agents[0].name, 'helper');
+  assert.strictEqual(result.commands.length, 1);
+  assert.strictEqual(result.commands[0].name, 'fsd:go');
+
+  cleanUp(coreDir);
+}
+
+// Test 10: Different layers can declare different structure names (structure from config wins — not per-layer)
+// Confirms the implementation reads structure once from the merged config, not per-layer.
+{
+  const coreDir = mkTmpDir();
+  const projDir = mkTmpDir();
+  // Core stores skills under 'skills/'; project stores them under 'capabilities/'
+  writeSkill(coreDir, 'core-thing', { name: 'core-thing', description: 'a core skill in the default skills dir' });
+  const projSkillDir = path.join(projDir, 'capabilities', 'proj-thing');
+  fs.mkdirSync(projSkillDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(projSkillDir, 'SKILL.md'),
+    `---\nname: proj-thing\ndescription: a project skill in capabilities dir\n---\nbody`,
+  );
+
+  // With structure override → only capabilities/ is scanned, so core/skills/ is invisible
+  const result = loadContent({
+    corePath: coreDir,
+    userPath: '/nonexistent',
+    projectPath: projDir,
+    config: { structure: { skills: 'capabilities' } },
+  });
+  const names = result.skills.map(s => s.name).sort();
+  assert.deepStrictEqual(names, ['proj-thing']);
+
+  cleanUp(coreDir, projDir);
+}
+
 console.log('  All loader tests passed');

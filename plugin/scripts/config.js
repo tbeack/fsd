@@ -4,6 +4,13 @@
 const fs = require('fs');
 const path = require('path');
 const { parseYaml } = require(path.join(__dirname, 'yaml-parser.js'));
+const { validateStructure } = require(path.join(__dirname, 'validator.js'));
+
+const DEFAULT_STRUCTURE = Object.freeze({
+  skills: 'skills',
+  agents: 'agents',
+  commands: 'commands',
+});
 
 /**
  * Strategic merge of two config objects.
@@ -87,4 +94,29 @@ function resolveLayerPaths(pluginRoot) {
   return { corePath, userPath, projectPath };
 }
 
-module.exports = { loadConfig, resolveLayerPaths, strategicMerge };
+/**
+ * Resolve the effective content-kind → directory mapping.
+ *
+ * `structure:` in config is a partial override — any subset of the known kinds
+ * may be specified; missing kinds fall back to `DEFAULT_STRUCTURE`. Malformed
+ * entries are dropped with a warning (not thrown) so a broken structure: key
+ * can never lock the user out of their own content.
+ *
+ * @param {Object} [config] - Merged config (may contain .structure)
+ * @returns {{ skills: string, agents: string, commands: string }}
+ */
+function getStructure(config) {
+  const override = (config && config.structure) || {};
+  const { valid, errors } = validateStructure(override);
+
+  if (!valid) {
+    for (const err of errors) {
+      process.stderr.write(`[fsd] config.structure: ${err} — using default\n`);
+    }
+    return { ...DEFAULT_STRUCTURE };
+  }
+
+  return { ...DEFAULT_STRUCTURE, ...override };
+}
+
+module.exports = { loadConfig, resolveLayerPaths, strategicMerge, getStructure, DEFAULT_STRUCTURE };

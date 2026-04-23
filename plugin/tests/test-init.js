@@ -55,4 +55,54 @@ function mkTmpDir() {
   fs.rmSync(tmpDir, { recursive: true });
 }
 
+// Test 4: Config template includes (commented) structure section
+{
+  const tmpDir = mkTmpDir();
+  initProject(tmpDir);
+  const config = fs.readFileSync(path.join(tmpDir, '.fsd', 'config.yaml'), 'utf-8');
+  assert.ok(config.includes('structure:'), 'CONFIG_TEMPLATE should mention structure:');
+  fs.rmSync(tmpDir, { recursive: true });
+}
+
+// Test 5: initProject honors structure override and scaffolds renamed dirs
+{
+  const tmpDir = mkTmpDir();
+  const result = initProject(tmpDir, { structure: { skills: 'capabilities' } });
+
+  assert.strictEqual(result.success, true);
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.fsd', 'capabilities')), true, 'capabilities dir should exist');
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.fsd', 'skills')), false, 'default skills dir should NOT exist when overridden');
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.fsd', 'agents')), true, 'agents default still applies');
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.fsd', 'commands')), true, 'commands default still applies');
+
+  fs.rmSync(tmpDir, { recursive: true });
+}
+
+// Test 6: initProject with full structure override
+{
+  const tmpDir = mkTmpDir();
+  const result = initProject(tmpDir, { structure: { skills: 'a', agents: 'b', commands: 'c' } });
+  assert.strictEqual(result.success, true);
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.fsd', 'a')), true);
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.fsd', 'b')), true);
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.fsd', 'c')), true);
+  fs.rmSync(tmpDir, { recursive: true });
+}
+
+// Test 7: initProject with malformed structure falls back to defaults
+{
+  const tmpDir = mkTmpDir();
+  const originalStderrWrite = process.stderr.write;
+  process.stderr.write = () => true; // suppress the warning output in tests
+  try {
+    const result = initProject(tmpDir, { structure: { skills: 'bad/path' } });
+    assert.strictEqual(result.success, true);
+    // Falls back to defaults
+    assert.strictEqual(fs.existsSync(path.join(tmpDir, '.fsd', 'skills')), true);
+  } finally {
+    process.stderr.write = originalStderrWrite;
+  }
+  fs.rmSync(tmpDir, { recursive: true });
+}
+
 console.log('  All init tests passed');

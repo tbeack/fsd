@@ -1,15 +1,23 @@
 #!/usr/bin/env node
-'use strict';
+"use strict";
 
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
+const { getStructure, DEFAULT_STRUCTURE } = require(path.join(__dirname, "config.js"));
 
 const CONFIG_TEMPLATE = `# FSD Project Configuration
 # This file is committed to git and shared with the team.
 # Priority: project (.fsd/) > user (~/.fsd/) > core (plugin)
 
-# Workflow steps (default: plan -> execute -> verify)
-workflow: plan-execute-verify
+# Workflow steps (default: spec -> plan -> execute -> verify)
+workflow: spec-plan-execute-verify
+
+# Content-kind → directory mapping (partial override; unset keys use defaults)
+# Use /fsd-restructure to rename safely after install.
+structure:
+  # skills: skills
+  # agents: agents
+  # commands: commands
 
 # Disable specific core content
 disabled:
@@ -28,20 +36,22 @@ conventions:
 /**
  * Initialize .fsd/ project space in the given directory.
  * @param {string} projectDir - Directory to initialize
+ * @param {Object} [config] - Optional config to drive structure (defaults to DEFAULT_STRUCTURE)
  * @returns {Object} { success: boolean, message: string }
  */
-function initProject(projectDir) {
-  const fsdDir = path.join(projectDir, '.fsd');
+function initProject(projectDir, config) {
+  const fsdDir = path.join(projectDir, ".fsd");
 
   if (fs.existsSync(fsdDir)) {
     return { success: false, message: `.fsd/ already exists in ${projectDir}` };
   }
 
+  const structure = getStructure(config || {});
   fs.mkdirSync(fsdDir, { recursive: true });
-  fs.mkdirSync(path.join(fsdDir, 'skills'), { recursive: true });
-  fs.mkdirSync(path.join(fsdDir, 'agents'), { recursive: true });
-  fs.mkdirSync(path.join(fsdDir, 'commands'), { recursive: true });
-  fs.writeFileSync(path.join(fsdDir, 'config.yaml'), CONFIG_TEMPLATE);
+  for (const kind of Object.keys(structure)) {
+    fs.mkdirSync(path.join(fsdDir, structure[kind]), { recursive: true });
+  }
+  fs.writeFileSync(path.join(fsdDir, "config.yaml"), CONFIG_TEMPLATE);
 
   return { success: true, message: `Initialized .fsd/ in ${projectDir}` };
 }
