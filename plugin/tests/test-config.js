@@ -135,8 +135,11 @@ function writeYaml(dir, content) {
 // Test 9: getStructure returns defaults when config has no structure key
 {
   const structure = getStructure({});
-  assert.deepStrictEqual(structure, { skills: 'skills', agents: 'agents', commands: 'commands' });
   assert.deepStrictEqual(structure, { ...DEFAULT_STRUCTURE });
+  // Sanity: defaults cover both scannable and storage kinds
+  assert.strictEqual(structure.skills, 'skills');
+  assert.strictEqual(structure.spec, 'spec');
+  assert.strictEqual(structure.research, 'research');
 }
 
 // Test 10: getStructure returns defaults when config is undefined
@@ -153,10 +156,15 @@ function writeYaml(dir, content) {
   assert.strictEqual(structure.commands, 'commands');
 }
 
-// Test 12: getStructure applies full override
+// Test 12: getStructure applies full override across scannable kinds; storage kinds keep defaults
 {
   const structure = getStructure({ structure: { skills: 'a', agents: 'b', commands: 'c' } });
-  assert.deepStrictEqual(structure, { skills: 'a', agents: 'b', commands: 'c' });
+  assert.strictEqual(structure.skills, 'a');
+  assert.strictEqual(structure.agents, 'b');
+  assert.strictEqual(structure.commands, 'c');
+  assert.strictEqual(structure.spec, 'spec');
+  assert.strictEqual(structure.plan, 'plan');
+  assert.strictEqual(structure.research, 'research');
 }
 
 // Test 13: getStructure drops invalid override (slashes) and uses defaults

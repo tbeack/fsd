@@ -95,7 +95,19 @@ function validateCommand(meta) {
 }
 
 const RESERVED_STRUCTURE_VALUES = new Set(['config.yaml', '.state.yaml']);
-const STRUCTURE_KEYS = ['skills', 'agents', 'commands'];
+
+// Scannable kinds: loaded and activated by the framework at session start.
+// Each item is a discrete addressable entity (one SKILL.md per skill dir, one
+// .md per agent/command).
+const SCANNABLE_KINDS = ['skills', 'agents', 'commands'];
+
+// Storage kinds: directories that hold artifacts produced by skills (specs,
+// plans, research notes). The loader does NOT scan these; authoring is owned
+// by the corresponding fsd-spec / fsd-plan / fsd-research skills.
+const STORAGE_KINDS = ['spec', 'plan', 'research'];
+
+// All known kinds. Accepted by `structure:` config; used by /fsd-restructure.
+const STRUCTURE_KEYS = [...SCANNABLE_KINDS, ...STORAGE_KINDS];
 
 /**
  * Validate the `structure:` section of a config.
@@ -153,4 +165,13 @@ function validateStructure(structure) {
   return { valid: errors.length === 0, errors };
 }
 
-module.exports = { validateSkill, validateAgent, validateCommand, validateStructure, STRUCTURE_KEYS, RESERVED_STRUCTURE_VALUES };
+module.exports = {
+  validateSkill,
+  validateAgent,
+  validateCommand,
+  validateStructure,
+  STRUCTURE_KEYS,
+  SCANNABLE_KINDS,
+  STORAGE_KINDS,
+  RESERVED_STRUCTURE_VALUES,
+};

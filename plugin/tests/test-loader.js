@@ -214,4 +214,27 @@ function cleanUp(...dirs) {
   cleanUp(coreDir, projDir);
 }
 
+// Test 11: Loader does NOT scan storage kinds (spec/plan/research)
+// Defensive regression test: even if someone drops a SKILL.md under one of the
+// storage dirs, the loader must not activate it as a skill.
+{
+  const coreDir = mkTmpDir();
+  for (const storageKind of ['spec', 'plan', 'research']) {
+    const dir = path.join(coreDir, storageKind, 'fake-skill');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, 'SKILL.md'),
+      `---\nname: fake-skill-in-${storageKind}\ndescription: should never be picked up by the loader\n---\nbody`,
+    );
+  }
+  const result = loadContent({
+    corePath: coreDir,
+    userPath: '/nonexistent',
+    projectPath: '/nonexistent',
+    config: {},
+  });
+  assert.strictEqual(result.skills.length, 0, 'storage kinds must be invisible to the loader');
+  cleanUp(coreDir);
+}
+
 console.log('  All loader tests passed');

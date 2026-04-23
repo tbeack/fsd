@@ -14,7 +14,7 @@ const {
 const { initProject } = require(path.join(__dirname, '..', 'scripts', 'init.js'));
 const { addContent } = require(path.join(__dirname, '..', 'scripts', 'add.js'));
 const { loadContent } = require(path.join(__dirname, '..', 'scripts', 'loader.js'));
-const { loadConfig } = require(path.join(__dirname, '..', 'scripts', 'config.js'));
+const { loadConfig, DEFAULT_STRUCTURE } = require(path.join(__dirname, '..', 'scripts', 'config.js'));
 
 function mkTmpDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'fsd-restructure-'));
@@ -203,7 +203,7 @@ function setupFixture(tmpDir, opts = {}) {
 // Test 13: rewriteConfigStructure appends a block when missing
 {
   const input = `workflow: plan\n`;
-  const output = rewriteConfigStructure(input, { skills: 'caps', agents: 'agents', commands: 'commands' });
+  const output = rewriteConfigStructure(input, { ...DEFAULT_STRUCTURE, skills: 'caps' });
   assert.ok(output.includes('structure:'));
   assert.ok(output.includes('skills: caps'));
   assert.ok(output.startsWith('workflow: plan\n'));
@@ -212,10 +212,12 @@ function setupFixture(tmpDir, opts = {}) {
 // Test 14: rewriteConfigStructure writes only non-default keys
 {
   const input = `workflow: plan\n`;
-  const output = rewriteConfigStructure(input, { skills: 'skills', agents: 'agents', commands: 'commands' });
-  // All defaults — no explicit keys written, only commented example
+  const output = rewriteConfigStructure(input, { ...DEFAULT_STRUCTURE });
+  // All defaults — no explicit keys written, only commented example for every kind
   assert.ok(!/^\s*skills: skills/m.test(output));
   assert.ok(output.includes('# skills: skills'));
+  assert.ok(output.includes('# spec: spec'));
+  assert.ok(output.includes('# research: research'));
 }
 
 // --- findStaleReferences ---
@@ -239,6 +241,55 @@ function setupFixture(tmpDir, opts = {}) {
   const paths = hits.map(h => h.path);
   assert.ok(paths.includes(a));
   assert.ok(!paths.includes(b), 'should not match substrings inside unrelated words');
+  fs.rmSync(tmpDir, { recursive: true });
+}
+
+// --- Storage-kind rename (FSD-013) ---
+
+// Test 17: apply renames a storage-kind directory end-to-end
+{
+  const tmpDir = setupFixture(mkTmpDir());
+  const result = applyRestructure({
+    projectPath: tmpDir,
+    renames: { spec: 'specifications' },
+  });
+  assert.strictEqual(result.success, true);
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.fsd', 'specifications')), true);
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.fsd', 'spec')), false);
+  // .gitkeep moved with the rename
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.fsd', 'specifications', '.gitkeep')), true);
+
+  const config = loadConfig({
+    corePath: '/nonexistent',
+    userPath: '/nonexistent',
+    projectPath: path.join(tmpDir, '.fsd'),
+  });
+  assert.strictEqual(config.structure.spec, 'specifications');
+  fs.rmSync(tmpDir, { recursive: true });
+}
+
+// Test 18: preview rejects rename that creates an alias across scannable+storage kinds
+{
+  const tmpDir = setupFixture(mkTmpDir());
+  const result = previewRestructure({
+    projectPath: tmpDir,
+    renames: { skills: 'shared', spec: 'shared' },
+  });
+  assert.strictEqual(result.ok, false);
+  assert.ok(result.errors.some(e => e.includes('conflicts')));
+  fs.rmSync(tmpDir, { recursive: true });
+}
+
+// Test 19: preview handles rename of multiple kinds across both classes
+{
+  const tmpDir = setupFixture(mkTmpDir());
+  const result = previewRestructure({
+    projectPath: tmpDir,
+    renames: { skills: 'capabilities', plan: 'plans' },
+  });
+  assert.strictEqual(result.ok, true);
+  const kinds = result.renameOps.map(op => op.kind).sort();
+  assert.deepStrictEqual(kinds, ['plan', 'skills']);
   fs.rmSync(tmpDir, { recursive: true });
 }
 

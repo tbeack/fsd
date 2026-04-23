@@ -258,4 +258,37 @@ const { validateSkill, validateAgent, validateCommand, validateStructure } = req
   assert.ok(result.errors.some(e => e.includes('mapping')));
 }
 
+// --- Storage-kind extension (FSD-013) ---
+
+// Test 29: validateStructure accepts spec/plan/research as known kinds
+{
+  const result = validateStructure({ spec: 'specifications', plan: 'plans', research: 'notes' });
+  assert.strictEqual(result.valid, true, result.errors.join('; '));
+}
+
+// Test 30: aliases across scannable/storage kinds rejected (skills + spec same dir)
+{
+  const result = validateStructure({ skills: 'shared', spec: 'shared' });
+  assert.strictEqual(result.valid, false);
+  assert.ok(result.errors.some(e => e.includes('conflicts')));
+}
+
+// Test 31: reserved-name check still applies to storage kinds
+{
+  const result = validateStructure({ spec: 'config.yaml' });
+  assert.strictEqual(result.valid, false);
+  assert.ok(result.errors.some(e => e.includes('reserved')));
+}
+
+// Test 32: SCANNABLE_KINDS and STORAGE_KINDS are disjoint and cover STRUCTURE_KEYS
+{
+  const { SCANNABLE_KINDS, STORAGE_KINDS, STRUCTURE_KEYS } = require(
+    path.join(__dirname, '..', 'scripts', 'validator.js')
+  );
+  const overlap = SCANNABLE_KINDS.filter(k => STORAGE_KINDS.includes(k));
+  assert.strictEqual(overlap.length, 0, 'scannable and storage kinds must be disjoint');
+  const union = [...new Set([...SCANNABLE_KINDS, ...STORAGE_KINDS])];
+  assert.deepStrictEqual(union.sort(), [...STRUCTURE_KEYS].sort());
+}
+
 console.log('  All validator tests passed');

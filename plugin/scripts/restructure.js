@@ -163,11 +163,11 @@ function rewriteConfigStructure(rawContent, proposedStructure) {
     if (proposedStructure[kind] === DEFAULT_STRUCTURE[kind]) continue;
     structureLines.push(`  ${kind}: ${proposedStructure[kind]}`);
   }
-  // If nothing to record (all defaults), emit a commented-out example
+  // If nothing to record (all defaults), emit a commented-out example for each kind.
   if (structureLines.length === 2) {
-    structureLines.push('  # skills: skills');
-    structureLines.push('  # agents: agents');
-    structureLines.push('  # commands: commands');
+    for (const kind of STRUCTURE_KEYS) {
+      structureLines.push(`  # ${kind}: ${DEFAULT_STRUCTURE[kind]}`);
+    }
   }
   const newBlock = structureLines.join('\n') + '\n';
 

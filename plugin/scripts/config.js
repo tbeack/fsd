@@ -7,9 +7,14 @@ const { parseYaml } = require(path.join(__dirname, 'yaml-parser.js'));
 const { validateStructure } = require(path.join(__dirname, 'validator.js'));
 
 const DEFAULT_STRUCTURE = Object.freeze({
+  // Scannable kinds
   skills: 'skills',
   agents: 'agents',
   commands: 'commands',
+  // Storage kinds (artifacts produced by fsd-spec / fsd-plan / fsd-research)
+  spec: 'spec',
+  plan: 'plan',
+  research: 'research',
 });
 
 /**
