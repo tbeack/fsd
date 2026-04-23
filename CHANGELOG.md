@@ -42,6 +42,47 @@ The authoritative version lives in `plugin/.claude-plugin/plugin.json`. The READ
 
 ---
 
+## [0.5.0] - 2026-04-23
+
+### Added
+
+- **Artifact metadata schemas** (FSD-004) for the three storage kinds (`spec`, `plan`, `research`). Frontmatter is enforced at scan time; the schema is the contract that the future `/fsd-spec`, `/fsd-plan`, `/fsd-research` skills will author against.
+  - Common required fields: `project`, `id` (kebab-case, must match filename stem), `title`, `status` (`draft|active|archived`), `created` (ISO date).
+  - Common optional fields: `updated`, `tags`, `related` (cross-refs `<spec|plan|research>/<kebab-id>`).
+  - Spec extras: `approved` (boolean), `supersedes` (array of spec ids).
+  - Plan extras: `task` (string, often FSD-NNN), `depends_on` (array of plan ids), `estimate` (string).
+  - Research extras: `sources` (array of http(s) URLs), `conclusion` (string).
+  - Unknown frontmatter keys pass through silently (lenient, matches existing skill/agent/command behavior).
+- **`validateSpec`, `validatePlan`, `validateResearch`** in `plugin/scripts/validator.js`, each returning `{ valid, errors, warnings }` to match the existing validator shape. Also exports `ARTIFACT_STATUSES`, `ARTIFACT_VALIDATORS`, and the regex constants `KEBAB_CASE`, `ISO_DATE`, `CROSS_REF`, `URL_PATTERN`.
+- **`scanArtifacts({ fsdDir, kind, dirName })`** in `plugin/scripts/loader.js` — on-demand storage-kind scanner. Reads `*.md` files (skips `.gitkeep`), runs the matching validator, and treats a frontmatter `id` that disagrees with the filename stem as a hard validation error. Not used by `loadContent`; session-start cost is unaffected.
+- **`/fsd:validate --artifacts`** plus per-kind narrowing: `--specs`, `--plans`, `--research`. Renders one section per kind with the same `ok/WARN/ERR` formatting as the scannable kinds, rolled into a single combined `Summary:` line. Exit code is non-zero when any errors are present.
+- **New test file `plugin/tests/test-artifact-validator.js`** — 26 tests covering per-kind validation (minimal/full, every required field, status enum, ISO dates, kebab-case, cross-refs, kind-specific extras, lenient unknown keys) and three `/fsd:validate --artifacts` integration tests via `execFileSync` against a fixture project.
+- **+8 tests in `test-loader.js`** for `scanArtifacts`: empty dir, finds `.md` and skips `.gitkeep`, attaches validation, detects filename/id mismatch, honors a renamed dir from `config.structure`, returns `[]` for nonexistent dirs, throws on unknown kind, and a defensive regression that `loadContent` never surfaces artifacts.
+
+### Changed
+
+- **`plugin/commands/validate.md`** — `argument-hint` now lists the new `--artifacts`, `--specs`, `--plans`, `--research` flags; body documents on-demand artifact scanning.
+- **`/fsd:validate` no-flag behavior preserved** — running it with no flags continues to scan only the scannable kinds (skills/agents/commands). Artifact validation requires an explicit flag, so the default invocation matches the session-start loader's cost characteristics.
+- **`README.md`** — new **Artifact Schemas** subsection under "Content Schemas" with a worked example for each kind; Commands section documents the new `/fsd:validate` filters.
+- **`plugin/commands/init.md`** — post-init message points at the artifact schema in the README and the `/fsd:validate --artifacts` command.
+
+### Compatibility
+
+Fully backward-compatible. No migration required:
+
+- `validateSkill` / `validateAgent` / `validateCommand` signatures and behavior are unchanged.
+- `loadContent` return shape is unchanged — no `artifacts` key was added; storage kinds remain invisible to the loader by design (verified by a defensive regression test).
+- The plain `/fsd:validate` invocation produces the same output it did in 0.4.0; new behavior is opt-in via the new flags.
+
+### Out of scope (intentional, follow-up work)
+
+- Cross-artifact reference resolution (whether `plan.depends_on` actually points at a real plan) — the validator enforces *format only*; existence checking will land alongside the authoring skills.
+- Auto-generated artifact index / TOC.
+- The authoring skills themselves (FSD-006 / FSD-008 / FSD-010).
+- A fourth `roadmap` storage kind (will mirror this pattern when FSD-007 lands).
+
+---
+
 ## [0.4.0] - 2026-04-22
 
 ### Added
