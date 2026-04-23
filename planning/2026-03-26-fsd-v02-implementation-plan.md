@@ -4,7 +4,7 @@
 
 **Prerequisite:** v0.1 is fully implemented (yaml-parser, config, loader, init, add, list, SessionStart hook, 5 skills, 2 agents, 3 commands, 6 test files).
 
-**Architecture reference:** `docs/plans/2026-03-02-fsd-framework-design.md` (revised 2026-03-26)
+**Architecture reference:** `planning/2026-03-02-fsd-framework-design.md` (revised 2026-03-26)
 
 **Tech Stack:** Same as v0.1 — Node.js 18+ (zero npm dependencies), bash for hook entry, YAML config files.
 
