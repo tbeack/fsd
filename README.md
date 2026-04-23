@@ -167,6 +167,12 @@ Creates `.fsd/` with:
 - `agents/` -- project-specific agents
 - `commands/` -- project-specific commands
 
+After `/fsd:init`, run **`/fsd-new-project`** (see below) to capture project identity and the first roadmap entry — every downstream skill reads from those files.
+
+### `/fsd-new-project`
+
+Interactive one-time kickoff. Walks through the project's identity, scope, tech context, success metrics, anti-goals, first milestone, and first phase — then writes `planning/PROJECT.md` and `planning/ROADMAP.md`. Refuses to overwrite either file if already present. See **Project Context** below for the frontmatter schema and examples.
+
 ### `/fsd:list`
 
 Show all active content resolved across layers with validation status:
@@ -294,6 +300,73 @@ Optional: `color` (string)
 Required fields: `name` (string, `fsd:` prefix recommended), `description` (string)
 
 Optional: `argument-hint` (string)
+
+### Project Context
+
+Separate from the `.fsd/` content kinds, FSD persists a pair of files under `planning/` that capture the project's framing. They are written once (by `/fsd-new-project`) and read by downstream skills so every session starts with shared context:
+
+- `planning/PROJECT.md` — identity, scope, tech context, success metrics, anti-goals
+- `planning/ROADMAP.md` — versioned milestones → numbered phases
+
+When both files are present and their frontmatter validates, the session-start hook prints a one-line header: `Project: <name> — Milestone: <current> (v<version>)`. If either file is absent or invalid, the header is hidden (no noisy errors at session start — use `/fsd:validate` for that).
+
+**PROJECT.md schema**
+
+Required: `project` (non-empty string), `id` (kebab-case), `title` (non-empty), `status` (`draft|active|archived`), `created` (ISO date).
+
+Optional: `updated`, `tags` (kebab-case array), `vision` (string), `target_users` (array of strings).
+
+```yaml
+---
+project: My Project
+id: my-project
+title: My Project
+status: active
+created: 2026-04-23
+vision: One-line summary of what this project does
+target_users:
+  - solo developers
+  - small teams
+---
+
+# My Project
+
+## Identity
+...
+
+## Scope
+...
+```
+
+**ROADMAP.md schema**
+
+Required: all the PROJECT.md common fields, plus `version` (semver-like — `1.0` or `1.0.0`) and `current_milestone` (string id matching a `## Milestone <id>` heading in the body).
+
+```yaml
+---
+project: My Project
+id: my-project-roadmap
+title: My Project Roadmap
+status: active
+created: 2026-04-23
+version: 0.1
+current_milestone: v1
+---
+
+# My Project Roadmap
+
+## Milestone v1
+
+**Version:** 0.1
+**Name:** Initial release
+**Goal:** Ship the minimum useful thing.
+
+### Phase v1.1 — Bootstrap
+
+One-paragraph goal for the phase.
+```
+
+The validator enforces frontmatter format only; it does **not** check that `current_milestone` references an existing heading in the body, or that phase ids point at real specs/plans (mirroring the artifact-schema stance — cross-ref resolution will land with `/fsd-roadmap` in FSD-007).
 
 ### Artifact Schemas
 

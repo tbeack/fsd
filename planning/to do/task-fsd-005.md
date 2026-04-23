@@ -99,18 +99,20 @@ Add the post-init "what now?" step that gathers project context interactively an
 
 ## Acceptance Criteria
 
-- [ ] `validateProject` and `validateRoadmap` exported from `validator.js`, each matching `{ valid, errors, warnings }` shape
-- [ ] Required frontmatter enforced for both: `project`, `id` (kebab-case), `title`, `status`, `created`. Roadmap additionally requires `version` (semver-like) and `current_milestone`.
-- [ ] `loadProjectContext({ planningDir })` returns `{ project, roadmap, validation }` with `null` for absent files; never throws on missing files
-- [ ] `/fsd-new-project` skill exists at `plugin/skills/fsd-new-project/SKILL.md`, passes `/fsd:validate --skills`, and asks PROJECT + ROADMAP sections one at a time
-- [ ] Skill writes `planning/PROJECT.md` and `planning/ROADMAP.md` with valid frontmatter; refuses to overwrite if either file already exists
-- [ ] `/fsd:init` post-init message (in `plugin/commands/init.md`) mentions `/fsd-new-project` as the recommended next step
-- [ ] Session-start output includes a one-line `Project: <name> — Milestone: <current> (v<version>)` header when both files are present and valid; absent when either file is missing or invalid
-- [ ] `loadContent` return shape is additively extended: `projectContext` field present; existing fields (`skills`, `agents`, `commands`, `validationSummary`) unchanged
-- [ ] No regression: full test suite stays green (≥12 test files passing); existing session-start output unchanged when PROJECT.md / ROADMAP.md are absent
-- [ ] New `test-project-context.js` covers validators, loader helper, and refuse-to-overwrite path; integration test for `/fsd-new-project` exists
-- [ ] README has a "Project Context" section with example frontmatter for both files; Commands section mentions `/fsd-new-project`
-- [ ] Version sources aligned at 0.6.0: CHANGELOG `[0.6.0]` entry, README header, `plugin.json`
+All criteria verified 2026-04-23 before commit.
+
+- [x] `validateProject` and `validateRoadmap` exported from `validator.js`, each matching `{ valid, errors, warnings }` shape
+- [x] Required frontmatter enforced for both: `project`, `id` (kebab-case), `title`, `status`, `created`. Roadmap additionally requires `version` (semver-like) and `current_milestone`.
+- [x] `loadProjectContext({ planningDir })` returns `{ project, roadmap, validation }` with `null` for absent files; never throws on missing files
+- [x] `/fsd-new-project` skill exists at `plugin/skills/fsd-new-project/SKILL.md`, passes `/fsd:validate --skills`, and asks PROJECT + ROADMAP sections one at a time
+- [x] Skill writes `planning/PROJECT.md` and `planning/ROADMAP.md` with valid frontmatter; refuses to overwrite if either file already exists
+- [x] `/fsd:init` post-init message (in `plugin/commands/init.md`) mentions `/fsd-new-project` as the recommended next step
+- [x] Session-start output includes a one-line `Project: <name> — Milestone: <current> (v<version>)` header when both files are present and valid; absent when either file is missing or invalid
+- [x] `loadContent` return shape is additively extended: `projectContext` field present; existing fields (`skills`, `agents`, `commands`, `validationSummary`) unchanged
+- [x] No regression: full test suite stays green (≥12 test files passing); existing session-start output unchanged when PROJECT.md / ROADMAP.md are absent
+- [x] New `test-project-context.js` covers validators, loader helper, and refuse-to-overwrite path; integration test for `/fsd-new-project` exists
+- [x] README has a "Project Context" section with example frontmatter for both files; Commands section mentions `/fsd-new-project`
+- [x] Version sources aligned at 0.6.0: CHANGELOG `[0.6.0]` entry, README header, `plugin.json`
 
 ## Decisions locked by user (pre-execution)
 

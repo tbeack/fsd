@@ -8,6 +8,8 @@ const {
   validateSkill,
   validateAgent,
   validateCommand,
+  validateProject,
+  validateRoadmap,
   ARTIFACT_VALIDATORS,
   STORAGE_KINDS,
 } = require(path.join(__dirname, 'validator.js'));
@@ -137,6 +139,58 @@ function scanCommands(baseDir, layer, dirName = 'commands') {
 }
 
 /**
+ * Read and validate a single project-context file (PROJECT.md or ROADMAP.md).
+ * Returns null if the file does not exist. Never throws.
+ *
+ * @param {string} filePath - Absolute path to the markdown file
+ * @param {Function} validator - validator.validateProject or validator.validateRoadmap
+ * @returns {{ meta: Object, body: string, path: string, validation: Object } | null}
+ */
+function readProjectContextFile(filePath, validator) {
+  if (!fs.existsSync(filePath)) return null;
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const meta = extractFrontmatter(content);
+  const body = content.replace(/^---\n[\s\S]*?\n---\n?/, '');
+  return { meta, body, path: filePath, validation: validator(meta) };
+}
+
+/**
+ * Load the project-context pair (PROJECT.md + ROADMAP.md) from the given
+ * planning directory. Both files are independently optional; a missing file
+ * surfaces as `null`, not an error. No throw on absent dir.
+ *
+ * Intended for both on-demand reads (by downstream skills) and the
+ * session-start header (via loadContent).
+ *
+ * @param {Object} opts
+ * @param {string} opts.planningDir - Planning directory (e.g. `<repo>/planning`)
+ * @returns {{
+ *   project: { meta, body, path, validation } | null,
+ *   roadmap: { meta, body, path, validation } | null,
+ *   validation: { project: Object|null, roadmap: Object|null },
+ * }}
+ */
+function loadProjectContext({ planningDir }) {
+  const project = readProjectContextFile(
+    path.join(planningDir, 'PROJECT.md'),
+    validateProject,
+  );
+  const roadmap = readProjectContextFile(
+    path.join(planningDir, 'ROADMAP.md'),
+    validateRoadmap,
+  );
+
+  return {
+    project,
+    roadmap,
+    validation: {
+      project: project ? project.validation : null,
+      roadmap: roadmap ? roadmap.validation : null,
+    },
+  };
+}
+
+/**
  * Scan a storage-kind artifact directory for `.md` files and validate each.
  * On-demand: NOT used by loadContent. Storage kinds are passive data — they
  * are not loaded into session context, only inspected when explicitly requested
@@ -204,7 +258,7 @@ function scanArtifacts({ fsdDir, kind, dirName }) {
  * @param {string} opts.userPath - User space (~/.fsd/)
  * @param {string} opts.projectPath - Project space (.fsd/)
  * @param {Object} opts.config - Merged config (may contain .disabled array)
- * @returns {{ skills: Array, agents: Array, commands: Array, validationSummary: Object }}
+ * @returns {{ skills: Array, agents: Array, commands: Array, validationSummary: Object, projectContext: Object }}
  */
 function loadContent({ corePath, userPath, projectPath, config }) {
   const layers = [
@@ -249,7 +303,14 @@ function loadContent({ corePath, userPath, projectPath, config }) {
     warnings: all.reduce((sum, i) => sum + i.validation.warnings.length, 0),
   };
 
-  return { skills, agents, commands, validationSummary };
+  // Surface PROJECT.md + ROADMAP.md context from the sibling `planning/` dir
+  // (repo-root-relative, one level above `.fsd/`). Absent files → null entries
+  // inside the returned shape; the session-start header hides itself when
+  // either piece is missing or invalid.
+  const planningDir = path.resolve(projectPath, '..', 'planning');
+  const projectContext = loadProjectContext({ planningDir });
+
+  return { skills, agents, commands, validationSummary, projectContext };
 }
 
-module.exports = { loadContent, scanSkills, scanAgents, scanCommands, scanArtifacts, extractFrontmatter };
+module.exports = { loadContent, scanSkills, scanAgents, scanCommands, scanArtifacts, extractFrontmatter, loadProjectContext };

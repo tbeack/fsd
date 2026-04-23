@@ -170,4 +170,16 @@ function mkTmpDir() {
   fs.rmSync(tmpDir, { recursive: true });
 }
 
+// Test 13: init.md post-init message recommends /fsd-new-project as next step
+{
+  const initMd = fs.readFileSync(
+    path.join(__dirname, '..', 'commands', 'init.md'),
+    'utf-8',
+  );
+  assert.ok(
+    initMd.includes('/fsd-new-project'),
+    'init.md should recommend /fsd-new-project after scaffold',
+  );
+}
+
 console.log('  All init tests passed');

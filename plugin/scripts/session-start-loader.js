@@ -12,7 +12,7 @@ const { loadContent } = require(path.join(pluginRoot, 'scripts', 'loader.js'));
 
 const paths = resolveLayerPaths(pluginRoot);
 const config = loadConfig(paths);
-const { skills, agents, validationSummary } = loadContent({ ...paths, config });
+const { skills, agents, validationSummary, projectContext } = loadContent({ ...paths, config });
 
 // --- formatting helpers ---
 
@@ -34,6 +34,22 @@ const lines = [];
 
 lines.push('FSD Framework Active');
 lines.push('====================');
+
+// One-line project header — shown only when BOTH files are present AND valid.
+// Hidden on any absence or schema failure so session start never emits
+// scary errors; `/fsd:validate` is the correct surface for that.
+if (
+  projectContext &&
+  projectContext.project &&
+  projectContext.roadmap &&
+  projectContext.project.validation.valid &&
+  projectContext.roadmap.validation.valid
+) {
+  const p = projectContext.project.meta;
+  const r = projectContext.roadmap.meta;
+  lines.push('');
+  lines.push(`Project: ${p.project} — Milestone: ${r.current_milestone} (v${r.version})`);
+}
 
 if (skills.length > 0) {
   lines.push('');

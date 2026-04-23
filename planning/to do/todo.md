@@ -6,7 +6,7 @@
 - [x] `FSD-002` — Fix plugin registration: FSD not active after installation ([2026-03-27_0001](../../ignore/issues/2026-03-27_0001.md))
 - [x] `FSD-003` — Make project directory structure config-driven + `/fsd-restructure` skill ([task-fsd-003](task-fsd-003.md))
 - [x] `FSD-004` — Metadata schema for `.fsd/{spec,plan,research}/*.md` artifacts + `/fsd:validate --artifacts` ([task-fsd-004](task-fsd-004.md))
-- [ ] `FSD-005` — Create `new-project` skill or hook → research best option ([task-fsd-005](task-fsd-005.md))
+- [x] `FSD-005` — Create `new-project` skill or hook → research best option ([task-fsd-005](task-fsd-005.md))
 - [ ] `FSD-006` — Create a new `fsd-spec` skill
 - [ ] `FSD-007` — Create a new `fsd-roadmap` skill
 - [ ] `FSD-008` — Create a new `fsd-plan` skill

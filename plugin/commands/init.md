@@ -27,4 +27,6 @@ All six directory names are configurable via the `structure:` section in `config
 
 Files in the storage-kind directories follow a documented frontmatter schema (see the **Artifact Schemas** section in the README). Use `/fsd:validate --artifacts` to check them on demand.
 
+**Recommended next step:** run `/fsd-new-project` to capture the project's vision and roadmap into `planning/PROJECT.md` and `planning/ROADMAP.md` — every downstream skill (`fsd-spec`, `fsd-plan`, `fsd-research`, `fsd-execute-plan`, `fsd-ship`) starts from that shared context, so doing it once upfront saves re-explaining the project on every session.
+
 If `.fsd/` already exists, tell the user and suggest `/fsd:config` to view or edit the existing configuration.
