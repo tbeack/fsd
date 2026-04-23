@@ -4,6 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const { loadConfig, resolveLayerPaths, getStructure } = require(path.join(__dirname, 'config.js'));
+const { STORAGE_KINDS } = require(path.join(__dirname, 'validator.js'));
 
 const TEMPLATES = {
   skill: (name) => `---
@@ -85,6 +86,9 @@ const VALID_TYPES = ['skill', 'agent', 'command'];
  * @returns {Object} { success: boolean, message: string, path: string }
  */
 function addContent({ type, name, userPath, projectPath, project, config }) {
+  if (STORAGE_KINDS.includes(type)) {
+    return { success: false, message: `${type} content is managed by the /fsd-${type} skill, not /fsd:add` };
+  }
   if (!VALID_TYPES.includes(type)) {
     return { success: false, message: `Invalid type: "${type}". Must be one of: ${VALID_TYPES.join(', ')}` };
   }

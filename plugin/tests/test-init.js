@@ -105,4 +105,69 @@ function mkTmpDir() {
   fs.rmSync(tmpDir, { recursive: true });
 }
 
+// --- Storage-kind scaffold (FSD-013) ---
+
+// Test 8: initProject scaffolds the 3 storage kinds in addition to scannable kinds
+{
+  const tmpDir = mkTmpDir();
+  const result = initProject(tmpDir);
+  assert.strictEqual(result.success, true);
+  for (const kind of ['spec', 'plan', 'research']) {
+    assert.strictEqual(
+      fs.existsSync(path.join(tmpDir, '.fsd', kind)),
+      true,
+      `.fsd/${kind}/ should exist after init`,
+    );
+  }
+  fs.rmSync(tmpDir, { recursive: true });
+}
+
+// Test 9: each storage dir contains a .gitkeep so git tracks it when empty
+{
+  const tmpDir = mkTmpDir();
+  initProject(tmpDir);
+  for (const kind of ['spec', 'plan', 'research']) {
+    const keep = path.join(tmpDir, '.fsd', kind, '.gitkeep');
+    assert.strictEqual(fs.existsSync(keep), true, `.fsd/${kind}/.gitkeep should exist`);
+  }
+  fs.rmSync(tmpDir, { recursive: true });
+}
+
+// Test 10: scannable kind dirs do NOT get a .gitkeep (content authored separately)
+{
+  const tmpDir = mkTmpDir();
+  initProject(tmpDir);
+  for (const kind of ['skills', 'agents', 'commands']) {
+    const keep = path.join(tmpDir, '.fsd', kind, '.gitkeep');
+    assert.strictEqual(fs.existsSync(keep), false, `.fsd/${kind}/.gitkeep should NOT exist`);
+  }
+  fs.rmSync(tmpDir, { recursive: true });
+}
+
+// Test 11: CONFIG_TEMPLATE documents storage kinds in the commented structure block
+{
+  const tmpDir = mkTmpDir();
+  initProject(tmpDir);
+  const config = fs.readFileSync(path.join(tmpDir, '.fsd', 'config.yaml'), 'utf-8');
+  for (const kind of ['spec', 'plan', 'research']) {
+    assert.ok(
+      config.includes(`# ${kind}: ${kind}`),
+      `CONFIG_TEMPLATE should document structure.${kind}`,
+    );
+  }
+  fs.rmSync(tmpDir, { recursive: true });
+}
+
+// Test 12: renaming a storage kind via structure override scaffolds the new dir
+{
+  const tmpDir = mkTmpDir();
+  const result = initProject(tmpDir, { structure: { spec: 'specifications' } });
+  assert.strictEqual(result.success, true);
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.fsd', 'specifications')), true);
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.fsd', 'spec')), false);
+  // .gitkeep goes in the renamed dir
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.fsd', 'specifications', '.gitkeep')), true);
+  fs.rmSync(tmpDir, { recursive: true });
+}
+
 console.log('  All init tests passed');

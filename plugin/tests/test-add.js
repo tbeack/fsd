@@ -177,4 +177,20 @@ function mkTmpDir() {
   fs.rmSync(projDir, { recursive: true });
 }
 
+// --- Storage-kind rejection (FSD-013) ---
+
+// Test 12: addContent rejects storage kinds with a clear message pointing at the skill
+for (const kind of ['spec', 'plan', 'research']) {
+  const userDir = mkTmpDir();
+  const result = addContent({ type: kind, name: 'x', userPath: userDir, project: false });
+  assert.strictEqual(result.success, false, `expected rejection for storage kind "${kind}"`);
+  assert.ok(
+    result.message.includes(`/fsd-${kind}`),
+    `message should point at the /fsd-${kind} skill, got: ${result.message}`,
+  );
+  // Make sure no directory was created as a side effect
+  assert.strictEqual(fs.existsSync(path.join(userDir, kind)), false);
+  fs.rmSync(userDir, { recursive: true });
+}
+
 console.log('  All add tests passed');
