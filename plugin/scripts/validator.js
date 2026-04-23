@@ -5,6 +5,13 @@ const VALID_MODELS = ['sonnet', 'opus', 'haiku'];
 const VALID_CONTEXT_STRATEGIES = ['fresh', 'shared', 'minimal'];
 const PROFILE_REF_PATTERN = /^\$\{profile\.\w+\}$/;
 
+// Artifact (storage-kind) frontmatter primitives.
+const ARTIFACT_STATUSES = ['draft', 'active', 'archived'];
+const KEBAB_CASE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const CROSS_REF = /^(spec|plan|research)\/[a-z0-9]+(-[a-z0-9]+)*$/;
+const URL_PATTERN = /^https?:\/\/\S+$/;
+
 /**
  * Validate skill frontmatter against schema.
  * @param {Object} meta - Parsed frontmatter
@@ -94,6 +101,147 @@ function validateCommand(meta) {
   return { valid: errors.length === 0, errors, warnings };
 }
 
+/**
+ * Type-tolerant boolean check. The bundled YAML parser returns scalar values
+ * as strings, so frontmatter `approved: true` is read as the string "true".
+ * Accept either a real boolean or one of the canonical string forms.
+ */
+function isBooleanish(v) {
+  return typeof v === 'boolean' || v === 'true' || v === 'false';
+}
+
+function isNonEmptyString(v) {
+  return typeof v === 'string' && v.length > 0;
+}
+
+function isStringArrayMatching(v, regex) {
+  if (!Array.isArray(v)) return false;
+  for (const item of v) {
+    if (typeof item !== 'string' || !regex.test(item)) return false;
+  }
+  return true;
+}
+
+/**
+ * Common artifact frontmatter validation. Shared by spec/plan/research.
+ * Enforces: project (non-empty string), id (kebab-case), title (non-empty),
+ * status (enum), created (ISO date), and optional updated/tags/related.
+ *
+ * @param {Object} meta - Parsed frontmatter
+ * @returns {{ errors: string[], warnings: string[] }}
+ */
+function validateArtifactCommon(meta) {
+  const errors = [];
+  const warnings = [];
+
+  if (!isNonEmptyString(meta.project)) {
+    errors.push('project: required, must be a non-empty string');
+  }
+
+  if (!isNonEmptyString(meta.id)) {
+    errors.push('id: required, must be a non-empty string');
+  } else if (!KEBAB_CASE.test(meta.id)) {
+    errors.push('id: must be kebab-case (lowercase a-z, 0-9, hyphens)');
+  }
+
+  if (!isNonEmptyString(meta.title)) {
+    errors.push('title: required, must be a non-empty string');
+  }
+
+  if (!meta.status) {
+    errors.push(`status: required, must be one of ${ARTIFACT_STATUSES.join(', ')}`);
+  } else if (!ARTIFACT_STATUSES.includes(meta.status)) {
+    errors.push(`status: must be one of ${ARTIFACT_STATUSES.join(', ')}`);
+  }
+
+  if (!meta.created) {
+    errors.push('created: required, must be an ISO date (YYYY-MM-DD)');
+  } else if (!ISO_DATE.test(meta.created)) {
+    errors.push('created: must be an ISO date (YYYY-MM-DD)');
+  }
+
+  if (meta.updated !== undefined && !ISO_DATE.test(meta.updated)) {
+    errors.push('updated: must be an ISO date (YYYY-MM-DD)');
+  }
+
+  if (meta.tags !== undefined && !isStringArrayMatching(meta.tags, KEBAB_CASE)) {
+    errors.push('tags: must be an array of kebab-case strings');
+  }
+
+  if (meta.related !== undefined && !isStringArrayMatching(meta.related, CROSS_REF)) {
+    errors.push('related: must be an array of <spec|plan|research>/<kebab-id> references');
+  }
+
+  return { errors, warnings };
+}
+
+/**
+ * Validate spec artifact frontmatter.
+ * @param {Object} meta - Parsed frontmatter
+ * @returns {{ valid: boolean, errors: string[], warnings: string[] }}
+ */
+function validateSpec(meta) {
+  const { errors, warnings } = validateArtifactCommon(meta);
+
+  if (meta.approved !== undefined && !isBooleanish(meta.approved)) {
+    errors.push('approved: must be a boolean (true|false)');
+  }
+
+  if (meta.supersedes !== undefined && !isStringArrayMatching(meta.supersedes, KEBAB_CASE)) {
+    errors.push('supersedes: must be an array of kebab-case spec ids');
+  }
+
+  return { valid: errors.length === 0, errors, warnings };
+}
+
+/**
+ * Validate plan artifact frontmatter.
+ * @param {Object} meta - Parsed frontmatter
+ * @returns {{ valid: boolean, errors: string[], warnings: string[] }}
+ */
+function validatePlan(meta) {
+  const { errors, warnings } = validateArtifactCommon(meta);
+
+  if (meta.task !== undefined && !isNonEmptyString(meta.task)) {
+    errors.push('task: must be a non-empty string');
+  }
+
+  if (meta.depends_on !== undefined && !isStringArrayMatching(meta.depends_on, KEBAB_CASE)) {
+    errors.push('depends_on: must be an array of kebab-case plan ids');
+  }
+
+  if (meta.estimate !== undefined && !isNonEmptyString(meta.estimate)) {
+    errors.push('estimate: must be a non-empty string');
+  }
+
+  return { valid: errors.length === 0, errors, warnings };
+}
+
+/**
+ * Validate research artifact frontmatter.
+ * @param {Object} meta - Parsed frontmatter
+ * @returns {{ valid: boolean, errors: string[], warnings: string[] }}
+ */
+function validateResearch(meta) {
+  const { errors, warnings } = validateArtifactCommon(meta);
+
+  if (meta.sources !== undefined && !isStringArrayMatching(meta.sources, URL_PATTERN)) {
+    errors.push('sources: must be an array of http(s) URL strings');
+  }
+
+  if (meta.conclusion !== undefined && !isNonEmptyString(meta.conclusion)) {
+    errors.push('conclusion: must be a non-empty string');
+  }
+
+  return { valid: errors.length === 0, errors, warnings };
+}
+
+const ARTIFACT_VALIDATORS = {
+  spec: validateSpec,
+  plan: validatePlan,
+  research: validateResearch,
+};
+
 const RESERVED_STRUCTURE_VALUES = new Set(['config.yaml', '.state.yaml']);
 
 // Scannable kinds: loaded and activated by the framework at session start.
@@ -170,6 +318,15 @@ module.exports = {
   validateAgent,
   validateCommand,
   validateStructure,
+  validateSpec,
+  validatePlan,
+  validateResearch,
+  ARTIFACT_VALIDATORS,
+  ARTIFACT_STATUSES,
+  KEBAB_CASE,
+  ISO_DATE,
+  CROSS_REF,
+  URL_PATTERN,
   STRUCTURE_KEYS,
   SCANNABLE_KINDS,
   STORAGE_KINDS,
