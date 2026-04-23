@@ -1,0 +1,18 @@
+{
+  "name": "tbeack",
+  "owner": {
+    "name": "Theo Beack"
+  },
+  "metadata": {
+    "description": "Plugins by Theo Beack",
+    "homepage": "https://github.com/tbeack/fsd"
+  },
+  "plugins": [
+    {
+      "name": "fsd",
+      "version": "0.2.0",
+      "source": "./plugin",
+      "description": "Full Stack Development — a multi-layer meta-framework for Claude Code with schema-validated skills, agents, and commands"
+    }
+  ]
+}
