@@ -8,7 +8,7 @@
 - [x] `FSD-004` — Metadata schema for `.fsd/{spec,plan,research}/*.md` artifacts + `/fsd:validate --artifacts` ([task-fsd-004](task-fsd-004.md))
 - [x] `FSD-005` — Create `new-project` skill or hook → research best option ([task-fsd-005](task-fsd-005.md))
 - [ ] `FSD-006` — Create a new `fsd-spec` skill
-- [ ] `FSD-007` — Create a new `fsd-roadmap` skill
+- [x] `FSD-007` — Create a new `fsd-roadmap` skill ([task-fsd-007](task-fsd-007.md))
 - [ ] `FSD-008` — Create a new `fsd-plan` skill
 - [ ] `FSD-009` — Create a new `fsd-execute-plan` skill
 - [ ] `FSD-010` — Create a new `fsd-research` skill

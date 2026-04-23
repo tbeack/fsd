@@ -173,6 +173,20 @@ After `/fsd:init`, run **`/fsd-new-project`** (see below) to capture project ide
 
 Interactive one-time kickoff. Walks through the project's identity, scope, tech context, success metrics, anti-goals, first milestone, and first phase — then writes `planning/PROJECT.md` and `planning/ROADMAP.md`. Refuses to overwrite either file if already present. See **Project Context** below for the frontmatter schema and examples.
 
+### `/fsd-roadmap`
+
+Mid-project maintenance for `planning/ROADMAP.md`. Dispatches five surgical operations that edit the file in place while preserving user-authored goal prose and re-validating the schema on every write:
+
+| Op | Purpose |
+|---|---|
+| `add-milestone` | Append a new `## Milestone <id>` block. Optionally set as current. |
+| `add-phase` | Insert a new `### Phase <id>` block into a named milestone. |
+| `advance` | Mark current milestone shipped; flip `current_milestone` + `version` to the next milestone (auto-adopts its `**Version:**` into frontmatter). |
+| `complete-phase` | Mark a named phase shipped via a `**Status:** shipped (YYYY-MM-DD)` body line. |
+| `bump-version` | Frontmatter `version:` bump (patch-style; does not touch milestones). |
+
+`advance` and `complete-phase` are idempotent — re-running on an already-shipped section no-ops instead of double-inserting. All ops abort without touching the file if the result would fail `validateRoadmap`. Refuses to run if `planning/ROADMAP.md` is missing (use `/fsd-new-project` to create it first).
+
 ### `/fsd:list`
 
 Show all active content resolved across layers with validation status:
@@ -303,10 +317,12 @@ Optional: `argument-hint` (string)
 
 ### Project Context
 
-Separate from the `.fsd/` content kinds, FSD persists a pair of files under `planning/` that capture the project's framing. They are written once (by `/fsd-new-project`) and read by downstream skills so every session starts with shared context:
+Separate from the `.fsd/` content kinds, FSD persists a pair of files under `planning/` that capture the project's framing. They are written once (by `/fsd-new-project`) and maintained over time (by `/fsd-roadmap` for the roadmap), and read by downstream skills so every session starts with shared context:
 
 - `planning/PROJECT.md` — identity, scope, tech context, success metrics, anti-goals
 - `planning/ROADMAP.md` — versioned milestones → numbered phases
+
+**Create once, edit many.** `/fsd-new-project` writes both files and refuses to overwrite. `/fsd-roadmap` is the ongoing-edits surface for the roadmap: add milestones, add phases, advance when a milestone ships, mark a phase complete, or bump the version without disturbing user-authored goal paragraphs. Every edit re-validates against the schema; failed edits leave the file on disk unchanged.
 
 When both files are present and their frontmatter validates, the session-start hook prints a one-line header: `Project: <name> — Milestone: <current> (v<version>)`. If either file is absent or invalid, the header is hidden (no noisy errors at session start — use `/fsd:validate` for that).
 
