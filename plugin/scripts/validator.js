@@ -11,6 +11,7 @@ const KEBAB_CASE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const CROSS_REF = /^(spec|plan|research)\/[a-z0-9]+(-[a-z0-9]+)*$/;
 const URL_PATTERN = /^https?:\/\/\S+$/;
+const SEMVER_LIKE = /^\d+\.\d+(\.\d+)?$/;
 
 /**
  * Validate skill frontmatter against schema.
@@ -242,6 +243,107 @@ const ARTIFACT_VALIDATORS = {
   research: validateResearch,
 };
 
+/**
+ * Common project-context frontmatter validation. Shared by PROJECT.md and
+ * ROADMAP.md. Mirrors the artifact schema vocabulary so the two kinds of
+ * files feel consistent, but the files themselves live in `planning/` (not
+ * `.fsd/`) and are not scanned as artifacts.
+ *
+ * Enforces: project (non-empty), id (kebab-case), title (non-empty),
+ * status (enum), created (ISO date); optional updated/tags.
+ *
+ * @param {Object} meta - Parsed frontmatter
+ * @returns {{ errors: string[], warnings: string[] }}
+ */
+function validateProjectContextCommon(meta) {
+  const errors = [];
+  const warnings = [];
+
+  if (!isNonEmptyString(meta.project)) {
+    errors.push('project: required, must be a non-empty string');
+  }
+
+  if (!isNonEmptyString(meta.id)) {
+    errors.push('id: required, must be a non-empty string');
+  } else if (!KEBAB_CASE.test(meta.id)) {
+    errors.push('id: must be kebab-case (lowercase a-z, 0-9, hyphens)');
+  }
+
+  if (!isNonEmptyString(meta.title)) {
+    errors.push('title: required, must be a non-empty string');
+  }
+
+  if (!meta.status) {
+    errors.push(`status: required, must be one of ${ARTIFACT_STATUSES.join(', ')}`);
+  } else if (!ARTIFACT_STATUSES.includes(meta.status)) {
+    errors.push(`status: must be one of ${ARTIFACT_STATUSES.join(', ')}`);
+  }
+
+  if (!meta.created) {
+    errors.push('created: required, must be an ISO date (YYYY-MM-DD)');
+  } else if (!ISO_DATE.test(meta.created)) {
+    errors.push('created: must be an ISO date (YYYY-MM-DD)');
+  }
+
+  if (meta.updated !== undefined && !ISO_DATE.test(meta.updated)) {
+    errors.push('updated: must be an ISO date (YYYY-MM-DD)');
+  }
+
+  if (meta.tags !== undefined && !isStringArrayMatching(meta.tags, KEBAB_CASE)) {
+    errors.push('tags: must be an array of kebab-case strings');
+  }
+
+  return { errors, warnings };
+}
+
+/**
+ * Validate PROJECT.md frontmatter. Captures project identity, scope, tech
+ * context — the one-time kickoff artifact that downstream skills read from.
+ *
+ * @param {Object} meta - Parsed frontmatter
+ * @returns {{ valid: boolean, errors: string[], warnings: string[] }}
+ */
+function validateProject(meta) {
+  const { errors, warnings } = validateProjectContextCommon(meta);
+
+  if (meta.vision !== undefined && !isNonEmptyString(meta.vision)) {
+    errors.push('vision: must be a non-empty string');
+  }
+
+  if (meta.target_users !== undefined) {
+    if (!Array.isArray(meta.target_users) ||
+        meta.target_users.some(u => !isNonEmptyString(u))) {
+      errors.push('target_users: must be an array of non-empty strings');
+    }
+  }
+
+  return { valid: errors.length === 0, errors, warnings };
+}
+
+/**
+ * Validate ROADMAP.md frontmatter. Versioned milestones → numbered phases.
+ * Requires `version` (semver-like) and `current_milestone` in addition to
+ * the common project-context fields.
+ *
+ * @param {Object} meta - Parsed frontmatter
+ * @returns {{ valid: boolean, errors: string[], warnings: string[] }}
+ */
+function validateRoadmap(meta) {
+  const { errors, warnings } = validateProjectContextCommon(meta);
+
+  if (!isNonEmptyString(meta.version)) {
+    errors.push('version: required, must be a semver-like string (e.g. "1.0" or "1.0.0")');
+  } else if (!SEMVER_LIKE.test(meta.version)) {
+    errors.push('version: must be a semver-like string (e.g. "1.0" or "1.0.0")');
+  }
+
+  if (!isNonEmptyString(meta.current_milestone)) {
+    errors.push('current_milestone: required, must be a non-empty string');
+  }
+
+  return { valid: errors.length === 0, errors, warnings };
+}
+
 const RESERVED_STRUCTURE_VALUES = new Set(['config.yaml', '.state.yaml']);
 
 // Scannable kinds: loaded and activated by the framework at session start.
@@ -321,12 +423,15 @@ module.exports = {
   validateSpec,
   validatePlan,
   validateResearch,
+  validateProject,
+  validateRoadmap,
   ARTIFACT_VALIDATORS,
   ARTIFACT_STATUSES,
   KEBAB_CASE,
   ISO_DATE,
   CROSS_REF,
   URL_PATTERN,
+  SEMVER_LIKE,
   STRUCTURE_KEYS,
   SCANNABLE_KINDS,
   STORAGE_KINDS,
