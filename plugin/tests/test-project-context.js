@@ -483,4 +483,59 @@ const minimalRoadmap = (over = {}) => ({
   fs.rmSync(dir, { recursive: true });
 }
 
+// --- verification: field propagates through loadProjectContext (FSD-009) ---
+
+// Test 28: PROJECT.md verification field round-trips through loadProjectContext.meta.
+{
+  const dir = mkTmpDir();
+  const planningDir = path.join(dir, 'planning');
+  const res = writeProjectFiles({
+    planningDir,
+    projectData: {
+      project: 'VProj', id: 'vproj', title: 'VProj',
+      verification: { tests: 'bash tests.sh', validate: 'node v.js' },
+    },
+    roadmapData: {
+      project: 'VProj', id: 'vproj-roadmap', title: 'VProj Roadmap',
+      version: '0.1', current_milestone: 'v1',
+    },
+  });
+  assert.strictEqual(res.ok, true, res.reason);
+
+  const ctx = loadProjectContext({ planningDir });
+  assert.strictEqual(ctx.project.validation.valid, true);
+  assert.deepStrictEqual(
+    ctx.project.meta.verification,
+    { tests: 'bash tests.sh', validate: 'node v.js' },
+  );
+  fs.rmSync(dir, { recursive: true });
+}
+
+// Test 29: invalid verification (non-object) surfaces as a validation error.
+{
+  const dir = mkTmpDir();
+  const planningDir = path.join(dir, 'planning');
+  fs.mkdirSync(planningDir);
+  fs.writeFileSync(
+    path.join(planningDir, PROJECT_FILENAME),
+    [
+      '---',
+      'project: Bad',
+      'id: bad',
+      'title: Bad',
+      'status: active',
+      'created: 2026-04-24',
+      'verification: not-an-object',
+      '---',
+      '',
+      '# Bad',
+    ].join('\n'),
+  );
+  const ctx = loadProjectContext({ planningDir });
+  assert.ok(ctx.project);
+  assert.strictEqual(ctx.project.validation.valid, false);
+  assert.ok(ctx.project.validation.errors.some(e => /verification/.test(e)));
+  fs.rmSync(dir, { recursive: true });
+}
+
 console.log('  All project-context tests passed');

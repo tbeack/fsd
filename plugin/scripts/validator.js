@@ -219,6 +219,10 @@ function validatePlan(meta) {
     errors.push('supersedes: must be an array of kebab-case plan ids');
   }
 
+  const verification = validateVerificationField(meta);
+  errors.push(...verification.errors);
+  warnings.push(...verification.warnings);
+
   return { valid: errors.length === 0, errors, warnings };
 }
 
@@ -246,6 +250,50 @@ const ARTIFACT_VALIDATORS = {
   plan: validatePlan,
   research: validateResearch,
 };
+
+const VERIFICATION_SUBFIELDS = ['tests', 'validate', 'typecheck', 'lint'];
+
+/**
+ * Validate an optional `verification:` frontmatter object. Shape:
+ *   verification:
+ *     tests?: string       # command run after each plan phase
+ *     validate?: string    # schema validation command
+ *     typecheck?: string   # type-check command
+ *     lint?: string        # lint command
+ *
+ * Absent → pass. Present → must be a plain object, each known subfield is a
+ * non-empty string when set, unknown subfields surface as warnings (forward-
+ * compatible — future commands can ship without breaking older validators).
+ *
+ * @param {Object} meta - Parsed frontmatter
+ * @returns {{ errors: string[], warnings: string[] }}
+ */
+function validateVerificationField(meta) {
+  const errors = [];
+  const warnings = [];
+
+  if (meta.verification === undefined || meta.verification === null) {
+    return { errors, warnings };
+  }
+
+  const v = meta.verification;
+  if (typeof v !== 'object' || Array.isArray(v)) {
+    errors.push('verification: must be a mapping with optional subfields tests|validate|typecheck|lint');
+    return { errors, warnings };
+  }
+
+  for (const key of Object.keys(v)) {
+    if (!VERIFICATION_SUBFIELDS.includes(key)) {
+      warnings.push(`verification.${key}: unknown subfield (expected one of ${VERIFICATION_SUBFIELDS.join(', ')})`);
+      continue;
+    }
+    if (!isNonEmptyString(v[key])) {
+      errors.push(`verification.${key}: must be a non-empty string when present`);
+    }
+  }
+
+  return { errors, warnings };
+}
 
 /**
  * Common project-context frontmatter validation. Shared by PROJECT.md and
@@ -320,6 +368,10 @@ function validateProject(meta) {
       errors.push('target_users: must be an array of non-empty strings');
     }
   }
+
+  const verification = validateVerificationField(meta);
+  errors.push(...verification.errors);
+  warnings.push(...verification.warnings);
 
   return { valid: errors.length === 0, errors, warnings };
 }
@@ -444,6 +496,8 @@ module.exports = {
   validateProject,
   validateRoadmap,
   validateArchitecture,
+  validateVerificationField,
+  VERIFICATION_SUBFIELDS,
   ARTIFACT_VALIDATORS,
   ARTIFACT_STATUSES,
   KEBAB_CASE,

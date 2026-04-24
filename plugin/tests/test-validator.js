@@ -291,4 +291,86 @@ const { validateSkill, validateAgent, validateCommand, validateStructure } = req
   assert.deepStrictEqual(union.sort(), [...STRUCTURE_KEYS].sort());
 }
 
+// --- validateVerificationField (FSD-009) ---
+
+// Test 33: validateVerificationField exported and accepts absent / empty object.
+{
+  const { validateVerificationField, VERIFICATION_SUBFIELDS } = require(
+    path.join(__dirname, '..', 'scripts', 'validator.js'),
+  );
+  assert.strictEqual(typeof validateVerificationField, 'function');
+  assert.deepStrictEqual(VERIFICATION_SUBFIELDS, ['tests', 'validate', 'typecheck', 'lint']);
+
+  const absent = validateVerificationField({});
+  assert.deepStrictEqual(absent, { errors: [], warnings: [] });
+
+  const emptyObj = validateVerificationField({ verification: {} });
+  assert.deepStrictEqual(emptyObj, { errors: [], warnings: [] });
+}
+
+// Test 34: validateVerificationField accepts all four known subfields.
+{
+  const { validateVerificationField } = require(path.join(__dirname, '..', 'scripts', 'validator.js'));
+  const all = validateVerificationField({
+    verification: { tests: 'npm t', validate: 'node v.js', typecheck: 'tsc', lint: 'eslint' },
+  });
+  assert.deepStrictEqual(all, { errors: [], warnings: [] });
+
+  const partial = validateVerificationField({ verification: { tests: 'npm t' } });
+  assert.deepStrictEqual(partial, { errors: [], warnings: [] });
+}
+
+// Test 35: validateVerificationField rejects non-object + empty-string subfields.
+{
+  const { validateVerificationField } = require(path.join(__dirname, '..', 'scripts', 'validator.js'));
+
+  const nonObj = validateVerificationField({ verification: 'npm test' });
+  assert.ok(nonObj.errors.some(e => /mapping/i.test(e)));
+
+  const arr = validateVerificationField({ verification: ['npm test'] });
+  assert.ok(arr.errors.some(e => /mapping/i.test(e)));
+
+  const empty = validateVerificationField({ verification: { tests: '' } });
+  assert.ok(empty.errors.some(e => /verification\.tests/.test(e) && /non-empty/.test(e)));
+
+  const numeric = validateVerificationField({ verification: { tests: 42 } });
+  assert.ok(numeric.errors.some(e => /verification\.tests/.test(e)));
+}
+
+// Test 36: validateVerificationField warns on unknown subfield (forward-compat).
+{
+  const { validateVerificationField } = require(path.join(__dirname, '..', 'scripts', 'validator.js'));
+  const r = validateVerificationField({ verification: { tests: 'npm t', extras: 'unknown' } });
+  assert.deepStrictEqual(r.errors, []);
+  assert.ok(r.warnings.some(w => /verification\.extras/.test(w) && /unknown/i.test(w)));
+}
+
+// Test 37: validateProject + validatePlan integrate the verification field.
+{
+  const { validateProject, validatePlan } = require(path.join(__dirname, '..', 'scripts', 'validator.js'));
+  const baseProj = {
+    project: 'P', id: 'p', title: 'P', status: 'active', created: '2026-04-24',
+  };
+  const basePlan = {
+    project: 'P', id: 'p', title: 'P', status: 'draft', created: '2026-04-24',
+  };
+
+  // Happy path — both accept an object.
+  assert.strictEqual(validateProject({ ...baseProj, verification: { tests: 'npm t' } }).valid, true);
+  assert.strictEqual(validatePlan({ ...basePlan, verification: { tests: 'npm t' } }).valid, true);
+
+  // Integration reject — non-object.
+  assert.strictEqual(validateProject({ ...baseProj, verification: 'npm t' }).valid, false);
+  assert.strictEqual(validatePlan({ ...basePlan, verification: 'npm t' }).valid, false);
+
+  // Integration reject — empty-string subfield.
+  const pEmpty = validateProject({ ...baseProj, verification: { tests: '' } });
+  assert.strictEqual(pEmpty.valid, false);
+  assert.ok(pEmpty.errors.some(e => /verification\.tests/.test(e)));
+
+  const planEmpty = validatePlan({ ...basePlan, verification: { typecheck: '' } });
+  assert.strictEqual(planEmpty.valid, false);
+  assert.ok(planEmpty.errors.some(e => /verification\.typecheck/.test(e)));
+}
+
 console.log('  All validator tests passed');
