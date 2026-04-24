@@ -42,6 +42,41 @@ The authoritative version lives in `plugin/.claude-plugin/plugin.json`. The READ
 
 ---
 
+## [0.9.0] - 2026-04-24
+
+### Added
+
+- **`/fsd-spec-update` skill** (FSD-014) — ongoing-edits surface for spec artifacts, pairing with `/fsd-spec`'s create surface to complete the "create once, edit many" shape for specs (mirrors the `/fsd-new-project` + `/fsd-roadmap` split). Dispatches four surgical operations that re-validate via `validateSpec` before writing and preserve untouched sections byte-for-byte:
+  - `update` — surgical edit of ONE thing per call: `title` (rewrites frontmatter + body `# <title>` heading in a single edit), `status` (flips draft ↔ active; refuses `archived` with a pointer to the `archive` op), `related` (add/remove one entry; `CROSS_REF`-validated), `tags` (add/remove one entry; `KEBAB_CASE`-validated), or one of the six canonical body sections (Problem / Goals / Non-goals / Requirements / Acceptance / Open questions). Running `update` with an unchanged value returns `{ ok: true, written: false }`.
+  - `approve` — flips frontmatter `approved: true`. Idempotent — re-running on an already-approved spec returns `{ ok: true, written: false, reason: "already approved" }` and does not touch disk.
+  - `archive` — flips frontmatter `status: archived`. Idempotent when already archived.
+  - `supersede` — two-file cross-spec op: adds `oldId` to the new spec's `supersedes:` array AND flips old spec's `status` to `archived`; bumps `updated:` on both. Best-effort atomic: if the second write fails, the first is rolled back from an in-memory backup (covered by a deterministic rollback test). Idempotent when the new spec already lists the old id AND the old spec is already archived.
+- **`plugin/scripts/spec-update.js`** — backing module exporting `parseSpec`, `readSpec`, `writeSpecAtomic`, `rewriteFrontmatter`, `update`, `approve`, `archive`, `supersede`, and `today`. The parser records line ranges for frontmatter, title line, and each body section (keyed by canonical `SECTION_ORDER` id imported from `spec.js`); user-authored extra `##` headings are tolerated (captured with `id: null` and still spliceable). `rewriteFrontmatter` handles both scalar edits and block-sequence array replacement with the same key-order preservation `roadmap.js` ships. Every op updates frontmatter `updated:` to today and re-validates via `validateSpec` before touching disk; failed writes leave the file on disk byte-unchanged (atomic tmp-file + rename).
+- **CLI entry point** on `spec-update.js` — `node scripts/spec-update.js <projectPath> <op> [--key=value ...]`. Exit 0 on success, 1 on op failure, 2 on invocation error. The skill's Step 4 delegates via this surface.
+- **New test files** — `plugin/tests/test-spec-update.js` (32 tests: parser coverage for minimal/all-6-sections/unknown-heading-tolerance/malformed-frontmatter; every `update` sub-target including byte-preservation of untouched sections; `approve` / `archive` idempotency; `supersede` happy path + refusals when either spec is missing + idempotency when both halves already applied + `newId === oldId` rejection + deterministic rollback test that corrupts the old spec to force a second-write failure and verifies the new spec is restored from backup; every-op-bumps-`updated` sweep; round-trip through `scanArtifacts` after every op; refusal path when target spec doesn't exist) and `plugin/tests/test-fsd-spec-update.js` (7 integration tests: CLI update-title, CLI update-related add/remove roundtrip, CLI approve + idempotency, CLI archive against a missing spec, CLI supersede, CLI usage error exit code, and SKILL.md sanity — name, all four op names present, `/fsd-spec` cross-reference, refuse-when-missing documentation, preview-before-write discipline).
+
+### Changed
+
+- **README.md** — Commands section adds `### /fsd-spec-update` with a per-op table; `/fsd-spec`'s entry updated to point at `/fsd-spec-update` as the editor. Project Context section adds a paragraph framing the spec pair as "create once, edit many" — mirroring the existing `/fsd-new-project` + `/fsd-roadmap` split.
+
+### Compatibility
+
+Fully backward-compatible. No migration required:
+
+- No schema change — `validateSpec` already supports every frontmatter field this skill edits (`status`, `approved`, `supersedes`, `related`, `tags`, `title`, `updated`). Specs created by the `/fsd-spec` create path in 0.8.0 are edit-compatible without modification.
+- `loadContent` / `loadProjectContext` / `scanArtifacts` return shapes are all unchanged.
+- `/fsd-spec-update` is additive — no existing skill or command behavior changes.
+
+### Out of scope (intentional, follow-up work)
+
+- `rename-id` — physically renames the spec file + updates frontmatter `id:` + rewrites cross-references in other specs/plans/research. Requires cross-file reference rewriting; follow-up FSD.
+- `unapprove` (flip `approved: true` → false) and `unarchive` (flip `status: archived` → active). Strict one-way ops keep the mental model clean for v1; add later if usage demands.
+- Edit history / audit log — no append-only record of who-edited-what.
+- Mass/batch ops — editing many specs at once (e.g., "retag all specs with `legacy`").
+- Cross-file reference resolution on `related:` and `supersedes:` — mirrors the FSD-004/005/006/007 stance: format-only validation.
+
+---
+
 ## [0.8.0] - 2026-04-24
 
 ### Added

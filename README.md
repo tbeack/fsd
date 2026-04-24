@@ -1,6 +1,6 @@
 # FSD — Full Stack Development Framework
 
-**Version 0.8.0** — released 2026-04-24 · [Changelog](./CHANGELOG.md)
+**Version 0.9.0** — released 2026-04-24 · [Changelog](./CHANGELOG.md)
 
 A multi-layer meta-framework plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with schema-validated skills, agents, and commands. Content is resolved across multiple layers so you can customize or override anything without touching the plugin itself.
 
@@ -189,7 +189,20 @@ Mid-project maintenance for `planning/ROADMAP.md`. Dispatches five surgical oper
 
 ### `/fsd-spec`
 
-Create a new spec artifact under `.fsd/<structure.spec>/<id>.md`. Interviews the user one question at a time for the spec's frontmatter (`id`, `title`, `status`, `approved`, `related`, `tags`) and six body sections — **Problem**, **Goals**, **Non-goals**, **Requirements**, **Acceptance**, **Open questions** — then renders a validated markdown file. Auto-injects `project:` from `planning/PROJECT.md`, so `/fsd-new-project` is a soft prerequisite; if PROJECT.md is missing, the skill offers to chain-invoke `/fsd-new-project` first. Refuses to overwrite an existing spec — editing is handled by a separate `/fsd-spec-update` skill (future). Optional title in `$ARGUMENTS` (e.g. `/fsd-spec artifact metadata schema`) skips the title question.
+Create a new spec artifact under `.fsd/<structure.spec>/<id>.md`. Interviews the user one question at a time for the spec's frontmatter (`id`, `title`, `status`, `approved`, `related`, `tags`) and six body sections — **Problem**, **Goals**, **Non-goals**, **Requirements**, **Acceptance**, **Open questions** — then renders a validated markdown file. Auto-injects `project:` from `planning/PROJECT.md`, so `/fsd-new-project` is a soft prerequisite; if PROJECT.md is missing, the skill offers to chain-invoke `/fsd-new-project` first. Refuses to overwrite an existing spec — editing is handled by `/fsd-spec-update` (see below). Optional title in `$ARGUMENTS` (e.g. `/fsd-spec artifact metadata schema`) skips the title question.
+
+### `/fsd-spec-update`
+
+Edit an existing spec artifact. Dispatches four surgical operations that re-validate via `validateSpec` before writing and preserve untouched sections byte-for-byte:
+
+| Op | Purpose |
+|---|---|
+| `update` | Surgical edit of ONE thing: `title`, `status` (draft ↔ active), `related` (add/remove one), `tags` (add/remove one), OR one of the six body sections (Problem / Goals / Non-goals / Requirements / Acceptance / Open questions). |
+| `approve` | Flip `approved: true`. Idempotent — re-running on an already-approved spec no-ops. |
+| `archive` | Flip `status: archived`. Idempotent. |
+| `supersede` | Add `oldId` to the new spec's `supersedes:` array AND archive the old spec. Best-effort atomic: if the second write fails, the first is rolled back from an in-memory backup. |
+
+Refuses to run if the target spec doesn't exist — use `/fsd-spec` to create new specs. Every op bumps frontmatter `updated:` to today. Out of scope for v1: `rename-id` (file rename), `unapprove`, `unarchive`, mass/batch ops, edit history.
 
 ### `/fsd:list`
 
@@ -329,6 +342,8 @@ Separate from the `.fsd/` content kinds, FSD persists a pair of files under `pla
 **Create once, edit many.** `/fsd-new-project` writes both files and refuses to overwrite. `/fsd-roadmap` is the ongoing-edits surface for the roadmap: add milestones, add phases, advance when a milestone ships, mark a phase complete, or bump the version without disturbing user-authored goal paragraphs. Every edit re-validates against the schema; failed edits leave the file on disk unchanged.
 
 Downstream artifact skills read `PROJECT.md` on demand to inject project framing into what they write. `/fsd-spec` auto-injects `project:` from `planning/PROJECT.md` into every new spec, so running `/fsd-new-project` once up front means you never re-type the project name or re-explain the project scope in later sessions. If you invoke `/fsd-spec` before `/fsd-new-project`, the skill detects the missing file and offers to chain-invoke the kickoff first.
+
+The spec pair follows the same **create once, edit many** shape as the project-context pair: `/fsd-spec` writes the file and refuses to overwrite; `/fsd-spec-update` is the ongoing-edits surface (update / approve / archive / supersede), mirroring how `/fsd-new-project` + `/fsd-roadmap` split creation from maintenance for the roadmap.
 
 When both files are present and their frontmatter validates, the session-start hook prints a one-line header: `Project: <name> — Milestone: <current> (v<version>)`. If either file is absent or invalid, the header is hidden (no noisy errors at session start — use `/fsd:validate` for that).
 
