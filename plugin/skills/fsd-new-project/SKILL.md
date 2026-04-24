@@ -49,6 +49,15 @@ say "use your best judgment" to fast-path any of them.
    signals, not vanity metrics)"
 6. **Anti-goals** — "What are we deliberately NOT doing? (optional — skip
    with 'none')"
+7. **Verification commands** — "Any repo-wide verification commands? These
+   get run by `/fsd-execute-plan` after each plan phase. Reply like
+   `tests: bash plugin/tests/run-tests.sh, validate: node plugin/scripts/validate.js plugin`
+   using any subset of `tests | validate | typecheck | lint`, or 'skip'."
+
+   Parse the comma-separated reply into an object — `tests: <cmd>` becomes
+   `{ tests: '<cmd>' }`, etc. On 'skip', omit the `verification` field
+   entirely. Unknown keys are dropped silently (the validator warns on them
+   later).
 
 Keep it conversational. If the user says "fill it in", infer reasonably from
 the repo contents you've already seen this session.

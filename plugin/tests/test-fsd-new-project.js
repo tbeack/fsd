@@ -125,4 +125,65 @@ function runBacking({ planningDir, projectData, roadmapData }) {
   assert.ok(/overwrite/i.test(content), 'skill must document overwrite behavior');
 }
 
+// --- verification field in interview (FSD-009) ---
+
+// Test 4: SKILL.md documents the optional verification prompt with subfields.
+{
+  const skillPath = path.join(pluginRoot, 'skills', 'fsd-new-project', 'SKILL.md');
+  const content = fs.readFileSync(skillPath, 'utf-8');
+  // Prompt prose + subfield names + skip escape.
+  assert.ok(/verification/i.test(content), 'SKILL.md must mention the verification prompt');
+  assert.ok(/tests/.test(content) && /validate/.test(content));
+  assert.ok(/typecheck/.test(content) && /lint/.test(content));
+  assert.ok(/skip/i.test(content), 'SKILL.md must document the skip escape');
+  assert.ok(/\/fsd-execute-plan/.test(content), 'SKILL.md must cross-reference the executor');
+}
+
+// Test 5: End-to-end — engineer-supplied verification lands in PROJECT.md and round-trips.
+{
+  const root = mkTmpDir();
+  const planningDir = path.join(root, 'planning');
+  const { code, result } = runBacking({
+    planningDir,
+    projectData: {
+      project: 'V Demo', id: 'v-demo', title: 'V Demo',
+      vision: 'show verification round-trip',
+      verification: { tests: 'bash run.sh', validate: 'node v.js' },
+    },
+    roadmapData: {
+      project: 'V Demo', id: 'v-demo-roadmap', title: 'V Demo Roadmap',
+      version: '0.1', current_milestone: 'v1',
+    },
+  });
+  assert.strictEqual(code, 0, JSON.stringify(result));
+  assert.strictEqual(result.ok, true);
+
+  const ctx = loadProjectContext({ planningDir });
+  assert.strictEqual(ctx.project.validation.valid, true);
+  assert.deepStrictEqual(
+    ctx.project.meta.verification,
+    { tests: 'bash run.sh', validate: 'node v.js' },
+  );
+
+  const contents = fs.readFileSync(path.join(planningDir, 'PROJECT.md'), 'utf-8');
+  assert.match(contents, /verification:/);
+  assert.match(contents, /  tests: bash run\.sh/);
+  fs.rmSync(root, { recursive: true });
+}
+
+// Test 6: Engineer skipped the prompt → no verification in output.
+{
+  const root = mkTmpDir();
+  const planningDir = path.join(root, 'planning');
+  const { code, result } = runBacking({
+    planningDir,
+    projectData: { project: 'S', id: 's', title: 'S' },
+    roadmapData: { project: 'S', id: 's-r', title: 'S R', version: '0.1', current_milestone: 'v1' },
+  });
+  assert.strictEqual(code, 0, JSON.stringify(result));
+  const contents = fs.readFileSync(path.join(planningDir, 'PROJECT.md'), 'utf-8');
+  assert.ok(!/verification:/.test(contents), 'PROJECT.md must not emit verification when omitted');
+  fs.rmSync(root, { recursive: true });
+}
+
 console.log('  All fsd-new-project integration tests passed');

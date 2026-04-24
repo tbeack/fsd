@@ -19,6 +19,13 @@ function yamlLine(key, value) {
     if (value.length === 0) return `${key}: []`;
     return `${key}:\n${value.map(v => `  - ${v}`).join('\n')}`;
   }
+  if (value && typeof value === 'object') {
+    const entries = Object.keys(value)
+      .filter(k => typeof value[k] === 'string' && value[k].length > 0)
+      .map(k => `  ${k}: ${value[k]}`);
+    if (entries.length === 0) return `${key}: {}`;
+    return `${key}:\n${entries.join('\n')}`;
+  }
   return `${key}: ${value}`;
 }
 
@@ -41,6 +48,10 @@ function bodySection(title, content) {
  * @param {string} [data.created]      - ISO date (default today)
  * @param {string} [data.vision]       - One-line project vision
  * @param {string[]} [data.target_users] - Array of target user descriptors
+ * @param {Object} [data.verification]   - Optional repo-wide verification command map
+ *                                         `{ tests?, validate?, typecheck?, lint? }`
+ *                                         consumed by `/fsd-execute-plan` after each
+ *                                         plan phase. Omit or leave empty to skip.
  * @param {Object} [data.sections]     - Markdown body content keyed by section
  * @returns {string}
  */
@@ -55,6 +66,12 @@ function renderProject(data) {
   if (data.vision) meta.vision = data.vision;
   if (Array.isArray(data.target_users) && data.target_users.length) {
     meta.target_users = data.target_users;
+  }
+  if (data.verification && typeof data.verification === 'object' && !Array.isArray(data.verification)) {
+    const filtered = Object.keys(data.verification)
+      .filter(k => typeof data.verification[k] === 'string' && data.verification[k].length > 0)
+      .reduce((acc, k) => { acc[k] = data.verification[k]; return acc; }, {});
+    if (Object.keys(filtered).length) meta.verification = filtered;
   }
 
   const lines = ['---'];
