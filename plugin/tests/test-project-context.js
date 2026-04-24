@@ -9,6 +9,7 @@ const path = require('path');
 const {
   validateProject,
   validateRoadmap,
+  validateArchitecture,
   SEMVER_LIKE,
   KEBAB_CASE,
 } = require(path.join(__dirname, '..', 'scripts', 'validator.js'));
@@ -163,14 +164,16 @@ const minimalRoadmap = (over = {}) => ({
 
 // --- loadProjectContext ---
 
-// Test 12: both files absent → nulls inside, never throws
+// Test 12: all three files absent → nulls inside, never throws
 {
   const dir = mkTmpDir();
   const r = loadProjectContext({ planningDir: path.join(dir, 'planning') });
   assert.strictEqual(r.project, null);
   assert.strictEqual(r.roadmap, null);
+  assert.strictEqual(r.architecture, null);
   assert.strictEqual(r.validation.project, null);
   assert.strictEqual(r.validation.roadmap, null);
+  assert.strictEqual(r.validation.architecture, null);
   fs.rmSync(dir, { recursive: true });
 }
 
@@ -219,6 +222,7 @@ const minimalRoadmap = (over = {}) => ({
   const r = loadProjectContext({ planningDir });
   assert.ok(r.project);
   assert.ok(r.roadmap);
+  assert.strictEqual(r.architecture, null); // absent in this fixture
   assert.strictEqual(r.project.meta.project, 'FSD Demo');
   assert.strictEqual(r.roadmap.meta.version, '0.1');
   assert.strictEqual(r.roadmap.meta.current_milestone, 'v1');
@@ -390,9 +394,93 @@ const minimalRoadmap = (over = {}) => ({
   });
   assert.ok(r.projectContext.project);
   assert.ok(r.projectContext.roadmap);
+  assert.strictEqual(r.projectContext.architecture, null);
   assert.strictEqual(r.projectContext.project.meta.project, 'Site');
   assert.strictEqual(r.projectContext.roadmap.meta.current_milestone, 'v1');
   fs.rmSync(root, { recursive: true });
+}
+
+// --- validateArchitecture ---
+
+// Test 23: minimal valid ARCHITECTURE passes
+{
+  const r = validateArchitecture({
+    project: 'Demo', id: 'architecture', title: 'Demo Architecture',
+    status: 'active', created: '2026-04-24',
+  });
+  assert.strictEqual(r.valid, true, r.errors.join('; '));
+}
+
+// Test 24: missing each common required field rejects
+{
+  const minimal = {
+    project: 'Demo', id: 'architecture', title: 'Demo Architecture',
+    status: 'active', created: '2026-04-24',
+  };
+  for (const field of ['project', 'id', 'title', 'status', 'created']) {
+    const m = { ...minimal };
+    delete m[field];
+    const r = validateArchitecture(m);
+    assert.strictEqual(r.valid, false, `missing ${field} should fail`);
+    assert.ok(r.errors.some(e => e.startsWith(`${field}:`)));
+  }
+}
+
+// Test 25: optional tags must be kebab-case array when present
+{
+  const good = validateArchitecture({
+    project: 'D', id: 'architecture', title: 'D', status: 'active', created: '2026-04-24',
+    tags: ['platform', 'backend'],
+  });
+  assert.strictEqual(good.valid, true);
+  const bad = validateArchitecture({
+    project: 'D', id: 'architecture', title: 'D', status: 'active', created: '2026-04-24',
+    tags: ['Bad_Tag'],
+  });
+  assert.strictEqual(bad.valid, false);
+}
+
+// --- loadProjectContext: architecture present ---
+
+// Test 26: architecture file present + valid → surfaced alongside project+roadmap
+{
+  const dir = mkTmpDir();
+  const planningDir = path.join(dir, 'planning');
+  const res = writeProjectFiles({
+    planningDir,
+    projectData: { project: 'ArchFix', id: 'arch-fix', title: 'Arch Fix', vision: 'demo' },
+    roadmapData: {
+      project: 'ArchFix', id: 'arch-fix-roadmap', title: 'Arch Fix Roadmap',
+      version: '0.1', current_milestone: 'v1',
+    },
+  });
+  assert.strictEqual(res.ok, true);
+  // Hand-write a minimal ARCHITECTURE.md to avoid coupling to architecture.js here.
+  fs.writeFileSync(path.join(planningDir, 'ARCHITECTURE.md'),
+    `---\nproject: ArchFix\nid: architecture\ntitle: ArchFix Architecture\nstatus: active\ncreated: 2026-04-24\n---\n\n# ArchFix Architecture\n\n## Stack & Technical Details\n\n_placeholder_\n`);
+
+  const r = loadProjectContext({ planningDir });
+  assert.ok(r.architecture, 'architecture should be loaded');
+  assert.strictEqual(r.architecture.meta.project, 'ArchFix');
+  assert.strictEqual(r.architecture.validation.valid, true);
+  assert.strictEqual(r.validation.architecture.valid, true);
+  assert.ok(!r.architecture.body.startsWith('---'));
+  fs.rmSync(dir, { recursive: true });
+}
+
+// Test 27: architecture file present + invalid → validation surfaces errors
+{
+  const dir = mkTmpDir();
+  const planningDir = path.join(dir, 'planning');
+  fs.mkdirSync(planningDir);
+  // Invalid: missing required `title` and bad `status` value.
+  fs.writeFileSync(path.join(planningDir, 'ARCHITECTURE.md'),
+    `---\nproject: X\nid: architecture\nstatus: bogus\ncreated: 2026-04-24\n---\n`);
+  const r = loadProjectContext({ planningDir });
+  assert.ok(r.architecture);
+  assert.strictEqual(r.architecture.validation.valid, false);
+  assert.ok(r.architecture.validation.errors.length > 0);
+  fs.rmSync(dir, { recursive: true });
 }
 
 console.log('  All project-context tests passed');

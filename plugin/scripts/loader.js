@@ -10,6 +10,7 @@ const {
   validateCommand,
   validateProject,
   validateRoadmap,
+  validateArchitecture,
   ARTIFACT_VALIDATORS,
   STORAGE_KINDS,
 } = require(path.join(__dirname, 'validator.js'));
@@ -155,9 +156,10 @@ function readProjectContextFile(filePath, validator) {
 }
 
 /**
- * Load the project-context pair (PROJECT.md + ROADMAP.md) from the given
- * planning directory. Both files are independently optional; a missing file
- * surfaces as `null`, not an error. No throw on absent dir.
+ * Load the project-context trio (PROJECT.md + ROADMAP.md + ARCHITECTURE.md)
+ * from the given planning directory. All three files are independently
+ * optional; a missing file surfaces as `null`, not an error. No throw on
+ * absent dir.
  *
  * Intended for both on-demand reads (by downstream skills) and the
  * session-start header (via loadContent).
@@ -167,7 +169,8 @@ function readProjectContextFile(filePath, validator) {
  * @returns {{
  *   project: { meta, body, path, validation } | null,
  *   roadmap: { meta, body, path, validation } | null,
- *   validation: { project: Object|null, roadmap: Object|null },
+ *   architecture: { meta, body, path, validation } | null,
+ *   validation: { project: Object|null, roadmap: Object|null, architecture: Object|null },
  * }}
  */
 function loadProjectContext({ planningDir }) {
@@ -179,13 +182,19 @@ function loadProjectContext({ planningDir }) {
     path.join(planningDir, 'ROADMAP.md'),
     validateRoadmap,
   );
+  const architecture = readProjectContextFile(
+    path.join(planningDir, 'ARCHITECTURE.md'),
+    validateArchitecture,
+  );
 
   return {
     project,
     roadmap,
+    architecture,
     validation: {
       project: project ? project.validation : null,
       roadmap: roadmap ? roadmap.validation : null,
+      architecture: architecture ? architecture.validation : null,
     },
   };
 }

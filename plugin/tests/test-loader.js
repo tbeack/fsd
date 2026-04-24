@@ -356,4 +356,39 @@ function mkArtifactProject() {
   cleanUp(coreDir);
 }
 
+// Test 20: loadContent surfaces architecture alongside project + roadmap when present.
+// FSD-008: extends the projectContext return shape to include a third file.
+{
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fsd-load-arch-'));
+  const projectPath = path.join(root, '.fsd');
+  fs.mkdirSync(projectPath);
+  const planningDir = path.join(root, 'planning');
+  fs.mkdirSync(planningDir);
+  // Hand-write all three files with minimal valid frontmatter.
+  fs.writeFileSync(path.join(planningDir, 'PROJECT.md'),
+    `---\nproject: Site\nid: site\ntitle: Site\nstatus: active\ncreated: 2026-04-24\n---\n`);
+  fs.writeFileSync(path.join(planningDir, 'ROADMAP.md'),
+    `---\nproject: Site\nid: site-roadmap\ntitle: Site Roadmap\nstatus: active\ncreated: 2026-04-24\nversion: 0.1\ncurrent_milestone: v1\n---\n`);
+  fs.writeFileSync(path.join(planningDir, 'ARCHITECTURE.md'),
+    `---\nproject: Site\nid: architecture\ntitle: Site Architecture\nstatus: active\ncreated: 2026-04-24\n---\n`);
+
+  const r = loadContent({ corePath: '/nonexistent', userPath: '/nonexistent', projectPath, config: {} });
+  assert.ok(r.projectContext.project);
+  assert.ok(r.projectContext.roadmap);
+  assert.ok(r.projectContext.architecture, 'architecture must be surfaced');
+  assert.strictEqual(r.projectContext.architecture.meta.project, 'Site');
+  assert.strictEqual(r.projectContext.architecture.validation.valid, true);
+  fs.rmSync(root, { recursive: true });
+}
+
+// Test 21: loadContent returns architecture: null when the file is absent (default).
+{
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fsd-load-noarch-'));
+  const projectPath = path.join(root, '.fsd');
+  fs.mkdirSync(projectPath);
+  const r = loadContent({ corePath: '/nonexistent', userPath: '/nonexistent', projectPath, config: {} });
+  assert.strictEqual(r.projectContext.architecture, null);
+  fs.rmSync(root, { recursive: true });
+}
+
 console.log('  All loader tests passed');
