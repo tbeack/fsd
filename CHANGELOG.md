@@ -42,6 +42,49 @@ The authoritative version lives in `plugin/.claude-plugin/plugin.json`. The READ
 
 ---
 
+## [0.10.0] - 2026-04-24
+
+### Added
+
+- **`/fsd-plan` skill** (FSD-008) — guided technical-implementation planning inside Claude Code's native plan mode. Engineer-led: the skill reads prior context and asks pointed questions only where that context doesn't cover. Produces a plan artifact under `.fsd/<structure.plan>/<id>.md` with six body sections (**Context**, **Approach**, **Phases**, **Risks**, **Acceptance**, **Open questions**). Six-step flow: preconditions (PROJECT.md precondition + spec-hard-require + no-overlap check) → `EnterPlanMode` → read-only context gathering → Socratic draft iteration → architecture delta → `ExitPlanMode` with the full payload + write on harness approval. Create-only; editing existing plans is deferred to a future `/fsd-plan-update` skill.
+- **Hard spec linkage** — `/fsd-plan` refuses to run without a `related: spec/<id>` frontmatter entry that resolves to an existing spec file. Archived specs are hard-refused (`status: archived` → abort with a pointer to `/fsd-spec-update supersede`). Unapproved specs (`approved: false`) require explicit engineer opt-in via `acknowledgeUnapproved: true` at write time; the skill surfaces the warning verbatim and asks "proceed anyway? (yes/no)" before proceeding.
+- **Narrowly-hinted context gathering** — inside plan mode, the skill reads the linked spec (full), PROJECT.md, ROADMAP.md, ARCHITECTURE.md (if present), the frontmatter + titles of every existing plan, and any files the spec explicitly names (plus greps for symbols it mentions). No broad repo scan. The engineer can request additional reads during the Socratic discussion.
+- **`planning/ARCHITECTURE.md` — new long-lived project-level artifact.** Lives alongside PROJECT.md and ROADMAP.md. Seven canonical body sections: **Stack & Technical Details** / **Decisions** (ADR-style, newest-first) / **Code Examples** / **References** / **Standards** / **Glossary** / **Open architectural questions**. `/fsd-plan` owns both creation (lazy: the skill offers to create it on first run with no engineer ARCHITECTURE.md present, seeded from this plan's technical decisions) and maintenance (append-on-every-run: ADR entries prepended under `## Decisions`; other six sections append in place with placeholder-strip on first real content). Every append bumps frontmatter `updated:` to today and re-validates via `validateArchitecture` before touching disk; failed writes leave the file byte-unchanged.
+- **`plugin/scripts/plan.js`** — backing module exporting `renderPlan`, `writePlanFile`, `resolvePlanPath`, `checkSpecPrecondition`, `today`, `SECTION_ORDER`, and `SECTION_META`. `renderPlan` emits frontmatter + all six `##` section headings (skipped sections retain their italic placeholder). `writePlanFile` auto-injects `project:` from PROJECT.md when the caller omits it, enforces the spec-hard-require, pre-validates via `validatePlan`, refuses to overwrite, and writes atomically (tmp + rename). `checkSpecPrecondition` is exported separately so the skill can exercise the missing/archived/unapproved branches during Step 1.
+- **`plugin/scripts/architecture.js`** — backing module exporting `parseArchitecture`, `renderArchitecture`, `createArchitectureFile`, `appendDecision`, `appendToSection`, `rewriteFrontmatter`, `today`, `ARCHITECTURE_FILENAME`, `SECTION_ORDER`, `SECTION_META`, and `HEADING_TO_ID`. The parser records line ranges for frontmatter and every `##` section so append ops splice the file directly (mirrors `roadmap.js` and `spec-update.js`). Unknown H2 headings are tolerated (captured with `id: null`) so engineer-authored extras don't break the parser.
+- **`validateArchitecture`** in `plugin/scripts/validator.js` — reuses `validateProjectContextCommon` (same required fields as PROJECT/ROADMAP: `project`, `id` kebab-case, `title`, `status`, `created`; same optional fields `updated`, `tags`). No architecture-specific extensions in v1.
+- **CLI entry points** — `node scripts/plan.js <projectPath> [--json=<path> | --id=... --title=... --related=spec/<id> ...]` accepts a JSON payload or flag-style args; exits 0 / 1 / 2 for success / op failure / invocation error. `node scripts/architecture.js <planningDir> <create|append-decision|append-to-section> [--key=value ...]` dispatches to the three ops with the same exit-code contract. Both CLI surfaces are stable — the skill's Step 6 delegates via them.
+- **`loadProjectContext` extended with third `architecture` field.** Return shape now `{ project, roadmap, architecture, validation: { project, roadmap, architecture } }`. Architecture entry follows the same `{ meta, body, path, validation } | null` shape as the other two. Additive — existing callers that only destructure `project` and `roadmap` are unaffected.
+- **New test files** — `plugin/tests/test-architecture.js` (24 tests: exports + constants, validator happy/fail paths, parser canonical-sections/unknown-heading-tolerance/malformed-frontmatter, renderer with/without user content, createArchitectureFile happy/refuse-to-overwrite/PROJECT.md-missing/explicit-project-bypass, appendDecision placeholder-strip/newest-first/updated-bump/refuse-if-missing/required-fields/byte-preservation, appendToSection placeholder-replace/subsequent-append/refuse-unknown-section/refuse-decisions-via-wrong-op/refuse-if-missing, multi-op round-trip stability), `plugin/tests/test-plan.js` (22 tests: exports, renderPlan minimal/full/placeholder, optional-field serialization gating, resolvePlanPath default/config-override, checkSpecPrecondition all four branches, writePlanFile happy/config-override/refuse-overwrite/pre-validation/PROJECT.md-auto-inject, spec-hard-require no-related/no-spec-link/missing-spec/archived-spec/unapproved-without-ack/unapproved-with-ack, round-trip via scanArtifacts), `plugin/tests/test-fsd-plan.js` (16 integration tests: CLI happy/no-spec-link/missing-spec/archived-spec/unapproved-without-ack/unapproved-with-ack/usage-error, architecture CLI create-then-append-decision-then-append-to-section smoke + usage error, SKILL.md sanity covering name + argument-hint + all six steps + EnterPlanMode/ExitPlanMode references + `/fsd-spec`/`/fsd-execute-plan`/`/fsd-new-project` cross-references + spec-hard-require/spec-status rules documentation + ARCHITECTURE.md create/append mechanics documentation + all six plan body sections mentioned + Guardrails cover plan-mode boundary + overwrite refusal + auto-commit prohibition).
+- **+5 tests in `test-project-context.js`** — `validateArchitecture` minimal-valid / missing-required-fields / optional-tags-format, `loadProjectContext` architecture-present / architecture-invalid paths.
+- **+2 tests in `test-loader.js`** — `loadContent.projectContext.architecture` present when file exists and valid, null when file absent.
+
+### Changed
+
+- **README.md** — Commands section adds `### /fsd-plan` with the full six-step flow documented. Project Context section now introduces the trio (PROJECT + ROADMAP + **ARCHITECTURE**) and documents the ARCHITECTURE.md schema with a worked example showing the 7-section shape and a sample ADR Decisions entry. Artifact Schemas section adds a note that `/fsd-plan` enforces the spec-hard-require at author time, orthogonal to the validator's format-only checks. Version header bumped to 0.10.0.
+- **`loadProjectContext` return shape** — additively extended with `architecture` and `validation.architecture`. Callers that don't destructure these are unaffected.
+- **`plugin/scripts/validator.js` exports extended** — adds `validateArchitecture` alongside the existing validator family.
+
+### Compatibility
+
+Fully backward-compatible. No migration required:
+
+- No schema change affects existing artifacts — `validateSpec`, `validatePlan`, `validateResearch`, `validateProject`, `validateRoadmap` all unchanged. Plans authored in `.fsd/<structure.plan>/` prior to this release (none in any repo yet, since this is the first authoring surface for them) continue to validate identically.
+- `loadProjectContext` return shape is additively extended — callers that don't destructure the new `architecture` key are unaffected.
+- Session-start header output is unchanged — ARCHITECTURE.md is read but not surfaced in the one-line header (`Project: <name> — Milestone: <current> (v<version>)`).
+- `/fsd-plan` is additive; no existing skill or command behavior changes.
+
+### Out of scope (intentional, follow-up work)
+
+- `/fsd-plan-update` — editing existing plans, flipping status, appending phases, adding `depends_on:` entries, archiving stale plans. Separate future FSD (to be captured after the first real plan has been hand-edited, mirroring the FSD-006 → FSD-014 pattern).
+- `/fsd-architecture` as a dedicated authoring surface for ARCHITECTURE.md. `/fsd-plan` is the only writer in v1; a dedicated skill can be added later if the append-on-plan mechanic proves insufficient for pure-architecture decisions that don't fit inside a plan's flow.
+- ARCHITECTURE.md update/archive ops beyond the append/edit-in-place semantics defined here — no rename, no ADR supersede chain, no per-section delete.
+- Surfacing ARCHITECTURE.md in the session-start header — a future FSD can extend the header if the project wants architecture info there too.
+- Cross-file reference resolution at validator level — `validatePlan` does not check that `related: spec/<id>` points at a real file. The skill enforces the hard-require at author time; `/fsd:validate --plans` remains format-only (mirrors the FSD-004 stance).
+- Multi-plan batch creation (one plan per `/fsd-plan` invocation).
+
+---
+
 ## [0.9.0] - 2026-04-24
 
 ### Added

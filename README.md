@@ -1,6 +1,6 @@
 # FSD — Full Stack Development Framework
 
-**Version 0.9.0** — released 2026-04-24 · [Changelog](./CHANGELOG.md)
+**Version 0.10.0** — released 2026-04-24 · [Changelog](./CHANGELOG.md)
 
 A multi-layer meta-framework plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with schema-validated skills, agents, and commands. Content is resolved across multiple layers so you can customize or override anything without touching the plugin itself.
 
@@ -204,6 +204,21 @@ Edit an existing spec artifact. Dispatches four surgical operations that re-vali
 
 Refuses to run if the target spec doesn't exist — use `/fsd-spec` to create new specs. Every op bumps frontmatter `updated:` to today. Out of scope for v1: `rename-id` (file rename), `unapprove`, `unarchive`, mass/batch ops, edit history.
 
+### `/fsd-plan`
+
+Guided technical-implementation planning **inside Claude Code's native plan mode**. Engineer-led — you provide the technical, architectural, and implementation guidance; the skill reads prior context and asks pointed questions only where that context doesn't cover. Produces a plan artifact under `.fsd/<structure.plan>/<id>.md` with six body sections (**Context**, **Approach**, **Phases**, **Risks**, **Acceptance**, **Open questions**).
+
+Six-step flow:
+
+1. **Preconditions** — loads PROJECT.md (offers to chain-invoke `/fsd-new-project` if missing). Hard-requires a spec linkage: the first `$ARGUMENTS` token names a spec id in `.fsd/<structure.spec>/`; archived specs are refused, unapproved specs require explicit opt-in.
+2. **Enter plan mode.**
+3. **Context gathering (read-only)** — linked spec in full + PROJECT.md + ROADMAP.md + `planning/ARCHITECTURE.md` (if present) + frontmatter of every existing plan + files/symbols the spec explicitly names. No broad repo scan.
+4. **Socratic discussion + draft iteration** — section-by-section; asks clarifying questions only for gaps. `depends_on:` is surfaced from the existing-plan list, not prompted as a frontmatter field.
+5. **Architecture delta** — if `planning/ARCHITECTURE.md` exists, offers to append ADR-style decisions and/or section content. If missing, offers lazy creation seeded from this plan's technical decisions.
+6. **ExitPlanMode + write** — on engineer approval the harness grants, writes the plan artifact and any architecture delta. Never auto-commits.
+
+Usage: `/fsd-plan [spec-id]`. Omit the argument to have the skill list existing specs and ask which one. Plan id defaults to the spec id (different directories, no collision). Create-only — editing existing plans is a future `/fsd-plan-update` skill.
+
 ### `/fsd:list`
 
 Show all active content resolved across layers with validation status:
@@ -334,10 +349,11 @@ Optional: `argument-hint` (string)
 
 ### Project Context
 
-Separate from the `.fsd/` content kinds, FSD persists a pair of files under `planning/` that capture the project's framing. They are written once (by `/fsd-new-project`) and maintained over time (by `/fsd-roadmap` for the roadmap), and read by downstream skills so every session starts with shared context:
+Separate from the `.fsd/` content kinds, FSD persists a trio of files under `planning/` that capture the project's framing. They are written once (by `/fsd-new-project` or lazily by `/fsd-plan` for architecture) and maintained over time (by `/fsd-roadmap` for the roadmap, by `/fsd-plan` for the architecture log), and read by downstream skills so every session starts with shared context:
 
 - `planning/PROJECT.md` — identity, scope, tech context, success metrics, anti-goals
 - `planning/ROADMAP.md` — versioned milestones → numbered phases
+- `planning/ARCHITECTURE.md` — long-lived stack, ADR-style decisions, code examples, references, standards, glossary, open architectural questions
 
 **Create once, edit many.** `/fsd-new-project` writes both files and refuses to overwrite. `/fsd-roadmap` is the ongoing-edits surface for the roadmap: add milestones, add phases, advance when a milestone ships, mark a phase complete, or bump the version without disturbing user-authored goal paragraphs. Every edit re-validates against the schema; failed edits leave the file on disk unchanged.
 
@@ -345,7 +361,9 @@ Downstream artifact skills read `PROJECT.md` on demand to inject project framing
 
 The spec pair follows the same **create once, edit many** shape as the project-context pair: `/fsd-spec` writes the file and refuses to overwrite; `/fsd-spec-update` is the ongoing-edits surface (update / approve / archive / supersede), mirroring how `/fsd-new-project` + `/fsd-roadmap` split creation from maintenance for the roadmap.
 
-When both files are present and their frontmatter validates, the session-start hook prints a one-line header: `Project: <name> — Milestone: <current> (v<version>)`. If either file is absent or invalid, the header is hidden (no noisy errors at session start — use `/fsd:validate` for that).
+`/fsd-plan` owns `planning/ARCHITECTURE.md` end-to-end: on its first invocation with no architecture file present, it offers to lazy-create one seeded from the plan's technical decisions. On every subsequent invocation, it offers to append ADR-style entries to the `## Decisions` section (newest-first) and/or append content to the other six sections in place. The engineer decides what lands in ARCHITECTURE.md versus what stays phase-local. `loadProjectContext` surfaces the file alongside PROJECT.md and ROADMAP.md so any future skill can read it.
+
+When PROJECT.md and ROADMAP.md are both present and their frontmatter validates, the session-start hook prints a one-line header: `Project: <name> — Milestone: <current> (v<version>)`. If either file is absent or invalid, the header is hidden (no noisy errors at session start — use `/fsd:validate` for that). ARCHITECTURE.md is not surfaced in the header in v1.
 
 **PROJECT.md schema**
 
@@ -405,6 +423,54 @@ One-paragraph goal for the phase.
 
 The validator enforces frontmatter format only; it does **not** check that `current_milestone` references an existing heading in the body, or that phase ids point at real specs/plans (mirroring the artifact-schema stance — cross-ref resolution will land with `/fsd-roadmap` in FSD-007).
 
+**ARCHITECTURE.md schema**
+
+Required: all the PROJECT.md common fields (`project`, `id`, `title`, `status`, `created`). No artifact-specific extensions in v1. By convention the `id:` is `architecture` and the title is `<ProjectName> Architecture`.
+
+```yaml
+---
+project: My Project
+id: architecture
+title: My Project Architecture
+status: active
+created: 2026-04-24
+updated: 2026-04-24
+---
+
+# My Project Architecture
+
+## Stack & Technical Details
+
+Node 20+, zero dependencies, atomic file writes via tmp + rename.
+
+## Decisions
+
+### 2026-04-24 — Use native plan mode for /fsd-plan
+
+**Context:** The planning skill needs engineer approval before writing artifacts.
+
+**Decision:** Skill invokes `EnterPlanMode` early; the drafted plan is the `ExitPlanMode` payload.
+
+**Consequences:** Approval gate is enforced by the harness; bypassing plan mode is a security boundary violation.
+
+## Code Examples
+...
+
+## References
+...
+
+## Standards
+...
+
+## Glossary
+...
+
+## Open architectural questions
+...
+```
+
+Append semantics (enforced by `/fsd-plan`): the `## Decisions` section grows newest-first with `### YYYY-MM-DD — <title>` ADR entries (Context / Decision / Consequences sub-fields). The other six sections are edited in place — first append strips the italic placeholder, subsequent appends land at the end.
+
 ### Artifact Schemas
 
 Storage-kind artifacts (`spec`, `plan`, `research`) are markdown files with YAML frontmatter. The framework does not load them at session start — they are passive data, scanned on demand by `/fsd:validate --artifacts` and consumed by the corresponding authoring skills (`/fsd-spec`, `/fsd-plan`, `/fsd-research`).
@@ -457,6 +523,8 @@ related:
 ```
 
 Plan-only optional fields: `task` (string, often an FSD-NNN reference), `depends_on` (array of plan ids), `estimate` (string).
+
+Plans are authored by `/fsd-plan`, which hard-requires a `related: spec/<id>` entry pointing at an existing spec. Archived specs are refused; unapproved specs require explicit engineer opt-in (the validator itself is format-only — the hard-require is enforced at author time).
 
 **Research example** (`.fsd/research/threat-model.md`):
 
