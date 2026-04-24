@@ -344,6 +344,20 @@ function validateRoadmap(meta) {
   return { valid: errors.length === 0, errors, warnings };
 }
 
+/**
+ * Validate ARCHITECTURE.md frontmatter. Long-lived project-level artifact
+ * capturing stack, ADR-style decisions, code examples, references, standards,
+ * glossary, and open architectural questions. No artifact-specific extensions
+ * beyond the common project-context fields in v1.
+ *
+ * @param {Object} meta - Parsed frontmatter
+ * @returns {{ valid: boolean, errors: string[], warnings: string[] }}
+ */
+function validateArchitecture(meta) {
+  const { errors, warnings } = validateProjectContextCommon(meta);
+  return { valid: errors.length === 0, errors, warnings };
+}
+
 const RESERVED_STRUCTURE_VALUES = new Set(['config.yaml', '.state.yaml']);
 
 // Scannable kinds: loaded and activated by the framework at session start.
@@ -425,6 +439,7 @@ module.exports = {
   validateResearch,
   validateProject,
   validateRoadmap,
+  validateArchitecture,
   ARTIFACT_VALIDATORS,
   ARTIFACT_STATUSES,
   KEBAB_CASE,
