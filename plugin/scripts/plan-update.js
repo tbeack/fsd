@@ -382,6 +382,139 @@ function update({ planPath, target, value, action, sectionId, content }) {
   }
 }
 
+// ---- phase + acceptance flippers ---------------------------------------
+
+const PHASE_LINE_RE = /^-\s+\[([ xX])\]\s+\*\*Phase\s+(\d{2,})\*\*\s+—\s+(.+?)\s*$/;
+const ACCEPTANCE_LINE_RE = /^(\s*)-\s+\[([ xX])\]\s+(.*?)\s*$/;
+
+/**
+ * Scan a plan's `## Phases` section for inline phase-checkbox entries.
+ *
+ * Matches top-level lines of shape `- [ ] **Phase NN** — <title>` (or `[x]`).
+ * Tolerates freeform prose (bullets, paragraphs) alongside checkbox lines —
+ * non-matching lines are simply ignored.
+ *
+ * @param {string} content - Full plan file content
+ * @returns {Array<{ number: string, title: string, completed: boolean, lineIndex: number }>}
+ */
+function parsePhases(content) {
+  const parsed = parsePlan(content);
+  const section = parsed.sections.find(s => s.id === 'phases');
+  if (!section) return [];
+
+  const phases = [];
+  const [startLine, endLine] = section.range;
+  // Skip the heading line; scan section body.
+  for (let i = startLine + 1; i < endLine; i++) {
+    const line = parsed.lines[i];
+    const m = line.match(PHASE_LINE_RE);
+    if (!m) continue;
+    phases.push({
+      number: m[2],
+      title: m[3],
+      completed: m[1].toLowerCase() === 'x',
+      lineIndex: i,
+    });
+  }
+  return phases;
+}
+
+/**
+ * Flip a `- [ ] **Phase NN**` checkbox to `- [x]` (case-preserving aside from
+ * the bracket). Byte-preserves every other line. Bumps frontmatter
+ * `updated:` to today. Refuses when the phase number is absent from the plan
+ * or already completed.
+ *
+ * @param {Object} opts
+ * @param {string} opts.planPath
+ * @param {string} opts.phaseNumber - Two-or-more-digit string ("01", "02", ...)
+ */
+function flipPhase({ planPath, phaseNumber }) {
+  const miss = assertFileExists(planPath); if (miss) return miss;
+  if (typeof phaseNumber !== 'string' || phaseNumber.length === 0) {
+    return { ok: false, reason: 'flipPhase: phaseNumber is required' };
+  }
+  const { parsed } = readPlan(planPath);
+  const { lines, frontmatterLines } = parsed;
+
+  const phases = parsePhases(lines.join('\n'));
+  const phase = phases.find(p => p.number === phaseNumber);
+  if (!phase) {
+    return { ok: false, reason: `flipPhase: phase "${phaseNumber}" not found in ## Phases` };
+  }
+  if (phase.completed) {
+    return { ok: false, reason: `flipPhase: phase "${phaseNumber}" already marked complete` };
+  }
+
+  const newLines = lines.slice();
+  newLines[phase.lineIndex] = newLines[phase.lineIndex].replace(
+    /-\s+\[\s\]/,
+    m => m.replace('[ ]', '[x]'),
+  );
+
+  const fmUpdated = rewriteFrontmatter(newLines, frontmatterLines, withUpdatedDate({}));
+  const rest = newLines.slice(frontmatterLines[1] + 1);
+  const newContent = [...fmUpdated, ...rest].join('\n');
+  const res = writePlanAtomic(planPath, newContent);
+  return res.ok ? { ok: true, written: true } : res;
+}
+
+/**
+ * Flip the first `- [ ]` line in `## Acceptance` whose text contains
+ * `lineMatcher` (case-sensitive substring) to `- [x]`. Byte-preserves every
+ * other line. Bumps frontmatter `updated:` to today. Refuses when the
+ * substring matches no open AC line, or when the matched line is already
+ * completed.
+ *
+ * @param {Object} opts
+ * @param {string} opts.planPath
+ * @param {string} opts.lineMatcher - Unique substring from the target AC line
+ */
+function flipAcceptance({ planPath, lineMatcher }) {
+  const miss = assertFileExists(planPath); if (miss) return miss;
+  if (typeof lineMatcher !== 'string' || lineMatcher.length === 0) {
+    return { ok: false, reason: 'flipAcceptance: lineMatcher is required' };
+  }
+  const { parsed } = readPlan(planPath);
+  const { lines, frontmatterLines } = parsed;
+
+  const section = parsed.sections.find(s => s.id === 'acceptance');
+  if (!section) {
+    return { ok: false, reason: 'flipAcceptance: ## Acceptance section not found' };
+  }
+
+  const [startLine, endLine] = section.range;
+  let matchedOpen = -1;
+  let matchedClosed = false;
+  for (let i = startLine + 1; i < endLine; i++) {
+    const m = lines[i].match(ACCEPTANCE_LINE_RE);
+    if (!m) continue;
+    if (!m[3].includes(lineMatcher)) continue;
+    if (m[2].toLowerCase() === 'x') { matchedClosed = true; continue; }
+    matchedOpen = i;
+    break;
+  }
+
+  if (matchedOpen === -1) {
+    if (matchedClosed) {
+      return { ok: false, reason: `flipAcceptance: matching AC line already marked complete (matcher="${lineMatcher}")` };
+    }
+    return { ok: false, reason: `flipAcceptance: no AC line contains "${lineMatcher}"` };
+  }
+
+  const newLines = lines.slice();
+  newLines[matchedOpen] = newLines[matchedOpen].replace(
+    /-\s+\[\s\]/,
+    m => m.replace('[ ]', '[x]'),
+  );
+
+  const fmUpdated = rewriteFrontmatter(newLines, frontmatterLines, withUpdatedDate({}));
+  const rest = newLines.slice(frontmatterLines[1] + 1);
+  const newContent = [...fmUpdated, ...rest].join('\n');
+  const res = writePlanAtomic(planPath, newContent);
+  return res.ok ? { ok: true, written: true } : res;
+}
+
 // ---- op: archive --------------------------------------------------------
 
 function archive({ planPath }) {
@@ -487,9 +620,11 @@ function parseCliArgs(argv) {
 //   node scripts/plan-update.js <projectPath> update --id=<id> --target=section --section-id=<id> --content="..."
 //   node scripts/plan-update.js <projectPath> archive --id=<id>
 //   node scripts/plan-update.js <projectPath> supersede --new-id=<new> --old-id=<old>
+//   node scripts/plan-update.js <projectPath> flip-phase --id=<id> --phase-number=NN
+//   node scripts/plan-update.js <projectPath> flip-ac    --id=<id> --line-matcher=<substring>
 if (require.main === module) {
   const [, , projectPath, opName, ...rest] = process.argv;
-  const OPS = new Set(['update', 'archive', 'supersede']);
+  const OPS = new Set(['update', 'archive', 'supersede', 'flip-phase', 'flip-ac']);
   if (!projectPath || !opName || !OPS.has(opName)) {
     process.stderr.write(`usage: plan-update.js <projectPath> <${[...OPS].join('|')}> [--key=value ...]\n`);
     process.exit(2);
@@ -514,6 +649,8 @@ if (require.main === module) {
     }
     const planPath = resolvePlanPath({ projectPath, config, id: args.id });
     if (opName === 'archive') result = archive({ planPath });
+    else if (opName === 'flip-phase') result = flipPhase({ planPath, phaseNumber: args.phaseNumber });
+    else if (opName === 'flip-ac') result = flipAcceptance({ planPath, lineMatcher: args.lineMatcher });
     else if (opName === 'update') {
       result = update({
         planPath,
@@ -532,11 +669,14 @@ if (require.main === module) {
 
 module.exports = {
   parsePlan,
+  parsePhases,
   readPlan,
   writePlanAtomic,
   rewriteFrontmatter,
   update,
   archive,
   supersede,
+  flipPhase,
+  flipAcceptance,
   today,
 };

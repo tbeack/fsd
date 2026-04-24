@@ -17,12 +17,15 @@ const path = require('path');
 
 const {
   parsePlan,
+  parsePhases,
   readPlan,
   writePlanAtomic,
   rewriteFrontmatter,
   update,
   archive,
   supersede,
+  flipPhase,
+  flipAcceptance,
   today,
 } = require(path.join(__dirname, '..', 'scripts', 'plan-update.js'));
 const { validatePlan } = require(path.join(__dirname, '..', 'scripts', 'validator.js'));
@@ -763,6 +766,250 @@ A
     assert.strictEqual(r.ok, false);
     assert.match(r.reason, /not found/i);
   }
+
+  fs.rmSync(root, { recursive: true });
+}
+
+// --- parsePhases / flipPhase / flipAcceptance (FSD-009) ---
+
+function seedExecutablePlan(projectPath, planningDir, id, { phases, acceptance } = {}) {
+  const specId = `${id}-spec`;
+  seedSpec(projectPath, planningDir, specId);
+  const planData = {
+    id,
+    title: id.replace(/-/g, ' '),
+    related: [`spec/${specId}`],
+    sections: {
+      phases: phases !== undefined ? phases : [
+        '- [ ] **Phase 01** — Validator extension',
+        '  - Add helper',
+        '  - Wire in',
+        '- [ ] **Phase 02** — Skill retrofit',
+        '  - Update SKILL.md',
+      ].join('\n'),
+      acceptance: acceptance !== undefined ? acceptance : [
+        '- [ ] validateVerificationField exported',
+        '- [ ] flipPhase byte-preserves body',
+        '- [ ] flipAcceptance refuses missing',
+      ].join('\n'),
+    },
+  };
+  const res = writePlanFile({ projectPath, planningDir, planData });
+  assert.strictEqual(res.ok, true, res.reason);
+  return res.written[0];
+}
+
+// parsePhases — minimal happy path.
+{
+  const root = mkTmpDir();
+  const projectPath = path.join(root, '.fsd');
+  const planningDir = path.join(root, 'planning');
+  seedProject(planningDir);
+  const p = seedExecutablePlan(projectPath, planningDir, 'one-phase', {
+    phases: '- [ ] **Phase 01** — Only phase',
+  });
+  const content = fs.readFileSync(p, 'utf-8');
+  const phases = parsePhases(content);
+  assert.strictEqual(phases.length, 1);
+  assert.deepStrictEqual(
+    { number: phases[0].number, title: phases[0].title, completed: phases[0].completed },
+    { number: '01', title: 'Only phase', completed: false },
+  );
+  assert.strictEqual(typeof phases[0].lineIndex, 'number');
+  fs.rmSync(root, { recursive: true });
+}
+
+// parsePhases — multi-phase with mix of completed/uncompleted.
+{
+  const root = mkTmpDir();
+  const projectPath = path.join(root, '.fsd');
+  const planningDir = path.join(root, 'planning');
+  seedProject(planningDir);
+  const p = seedExecutablePlan(projectPath, planningDir, 'multi', {
+    phases: '- [x] **Phase 01** — Already done\n- [ ] **Phase 02** — Up next\n- [ ] **Phase 03** — Later',
+  });
+  const phases = parsePhases(fs.readFileSync(p, 'utf-8'));
+  assert.strictEqual(phases.length, 3);
+  assert.strictEqual(phases[0].completed, true);
+  assert.strictEqual(phases[1].completed, false);
+  assert.strictEqual(phases[2].completed, false);
+  assert.deepStrictEqual(phases.map(p => p.number), ['01', '02', '03']);
+  fs.rmSync(root, { recursive: true });
+}
+
+// parsePhases — tolerates freeform prose interleaved with checkboxes.
+{
+  const root = mkTmpDir();
+  const projectPath = path.join(root, '.fsd');
+  const planningDir = path.join(root, 'planning');
+  seedProject(planningDir);
+  const p = seedExecutablePlan(projectPath, planningDir, 'prosy', {
+    phases: [
+      'Before we start: this plan has a preamble.',
+      '',
+      '- [ ] **Phase 01** — First real phase',
+      '  - Step 1',
+      '',
+      'Some notes between phases, not a checkbox.',
+      '',
+      '- [ ] **Phase 02** — Second real phase',
+      '',
+      'Wrap-up prose that should be ignored by parsePhases.',
+    ].join('\n'),
+  });
+  const phases = parsePhases(fs.readFileSync(p, 'utf-8'));
+  assert.strictEqual(phases.length, 2);
+  assert.deepStrictEqual(phases.map(p => p.title), ['First real phase', 'Second real phase']);
+}
+
+// parsePhases — malformed phase lines silently yield empty.
+{
+  const root = mkTmpDir();
+  const projectPath = path.join(root, '.fsd');
+  const planningDir = path.join(root, 'planning');
+  seedProject(planningDir);
+  const p = seedExecutablePlan(projectPath, planningDir, 'nope', {
+    phases: '- [ ] Phase one (no bold, no em-dash)\n* [ ] **Phase 02** — wrong bullet',
+  });
+  const phases = parsePhases(fs.readFileSync(p, 'utf-8'));
+  assert.strictEqual(phases.length, 0);
+  fs.rmSync(path.dirname(path.dirname(p)), { recursive: true });
+}
+
+// flipPhase — happy path + byte-preservation of body content.
+{
+  const root = mkTmpDir();
+  const projectPath = path.join(root, '.fsd');
+  const planningDir = path.join(root, 'planning');
+  seedProject(planningDir);
+  const p = seedExecutablePlan(projectPath, planningDir, 'flip1');
+  const before = fs.readFileSync(p, 'utf-8');
+  const res = flipPhase({ planPath: p, phaseNumber: '01' });
+  assert.strictEqual(res.ok, true, res.reason);
+  assert.strictEqual(res.written, true);
+
+  const after = fs.readFileSync(p, 'utf-8');
+  // Frontmatter `updated:` is bumped.
+  assert.match(after, /updated: \d{4}-\d{2}-\d{2}/);
+
+  // Exactly one phase checkbox flipped.
+  const phasesAfter = parsePhases(after);
+  assert.strictEqual(phasesAfter.find(p => p.number === '01').completed, true);
+  assert.strictEqual(phasesAfter.find(p => p.number === '02').completed, false);
+
+  // Body outside of the phase line + frontmatter is byte-preserved.
+  const stripFm = (s) => s.replace(/^---\n[\s\S]*?\n---\n/, '');
+  const bodyBefore = stripFm(before);
+  const bodyAfter = stripFm(after);
+  const expected = bodyBefore.replace(
+    '- [ ] **Phase 01** — Validator extension',
+    '- [x] **Phase 01** — Validator extension',
+  );
+  assert.strictEqual(bodyAfter, expected, 'flipPhase must byte-preserve everything except the target phase line');
+
+  fs.rmSync(root, { recursive: true });
+}
+
+// flipPhase — refuses already-complete, refuses missing phase.
+{
+  const root = mkTmpDir();
+  const projectPath = path.join(root, '.fsd');
+  const planningDir = path.join(root, 'planning');
+  seedProject(planningDir);
+  const p = seedExecutablePlan(projectPath, planningDir, 'flip2');
+  flipPhase({ planPath: p, phaseNumber: '01' });
+  const again = flipPhase({ planPath: p, phaseNumber: '01' });
+  assert.strictEqual(again.ok, false);
+  assert.match(again.reason, /already marked complete/);
+
+  const ghost = flipPhase({ planPath: p, phaseNumber: '99' });
+  assert.strictEqual(ghost.ok, false);
+  assert.match(ghost.reason, /not found/);
+
+  const miss = flipPhase({ planPath: path.join(projectPath, 'plan', 'nope.md'), phaseNumber: '01' });
+  assert.strictEqual(miss.ok, false);
+  assert.match(miss.reason, /not found/);
+
+  fs.rmSync(root, { recursive: true });
+}
+
+// flipAcceptance — happy path + unique-substring matching + byte preservation.
+{
+  const root = mkTmpDir();
+  const projectPath = path.join(root, '.fsd');
+  const planningDir = path.join(root, 'planning');
+  seedProject(planningDir);
+  const p = seedExecutablePlan(projectPath, planningDir, 'flip-ac');
+  const res = flipAcceptance({ planPath: p, lineMatcher: 'flipPhase byte-preserves' });
+  assert.strictEqual(res.ok, true, res.reason);
+
+  const after = fs.readFileSync(p, 'utf-8');
+  const acceptanceBlock = after.match(/## Acceptance[\s\S]*?## Open questions/)[0];
+  assert.match(acceptanceBlock, /- \[x\] flipPhase byte-preserves body/);
+  // Other AC lines untouched.
+  assert.match(acceptanceBlock, /- \[ \] validateVerificationField exported/);
+  assert.match(acceptanceBlock, /- \[ \] flipAcceptance refuses missing/);
+
+  fs.rmSync(root, { recursive: true });
+}
+
+// flipAcceptance — refuses no-match, refuses already-complete.
+{
+  const root = mkTmpDir();
+  const projectPath = path.join(root, '.fsd');
+  const planningDir = path.join(root, 'planning');
+  seedProject(planningDir);
+  const p = seedExecutablePlan(projectPath, planningDir, 'flip-ac-miss');
+  const miss = flipAcceptance({ planPath: p, lineMatcher: 'nonexistent AC line' });
+  assert.strictEqual(miss.ok, false);
+  assert.match(miss.reason, /no AC line contains/);
+
+  flipAcceptance({ planPath: p, lineMatcher: 'validateVerificationField' });
+  const again = flipAcceptance({ planPath: p, lineMatcher: 'validateVerificationField' });
+  assert.strictEqual(again.ok, false);
+  assert.match(again.reason, /already marked complete/);
+
+  fs.rmSync(root, { recursive: true });
+}
+
+// CLI — flip-phase + flip-ac return { ok, written?, reason? }.
+{
+  const root = mkTmpDir();
+  const projectPath = path.join(root, '.fsd');
+  const planningDir = path.join(root, 'planning');
+  seedProject(planningDir);
+  seedExecutablePlan(projectPath, planningDir, 'cli-flip');
+  const { execFileSync } = require('child_process');
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'plan-update.js');
+
+  const runCli = (args) => {
+    try {
+      const out = execFileSync('node', [scriptPath, projectPath, ...args], { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] });
+      return { code: 0, result: JSON.parse(out) };
+    } catch (err) {
+      let parsed = {};
+      try { parsed = JSON.parse(err.stdout || '{}'); } catch (_) {}
+      return { code: err.status, result: parsed };
+    }
+  };
+
+  const okPhase = runCli(['flip-phase', '--id=cli-flip', '--phase-number=01']);
+  assert.strictEqual(okPhase.code, 0, JSON.stringify(okPhase.result));
+  assert.strictEqual(okPhase.result.ok, true);
+  assert.strictEqual(okPhase.result.written, true);
+
+  const failPhase = runCli(['flip-phase', '--id=cli-flip', '--phase-number=99']);
+  assert.strictEqual(failPhase.code, 1);
+  assert.strictEqual(failPhase.result.ok, false);
+  assert.match(failPhase.result.reason, /not found/);
+
+  const okAc = runCli(['flip-ac', '--id=cli-flip', '--line-matcher=validateVerificationField']);
+  assert.strictEqual(okAc.code, 0, JSON.stringify(okAc.result));
+  assert.strictEqual(okAc.result.ok, true);
+
+  const failAc = runCli(['flip-ac', '--id=cli-flip', '--line-matcher=nonexistent']);
+  assert.strictEqual(failAc.code, 1);
+  assert.match(failAc.result.reason, /no AC line contains/);
 
   fs.rmSync(root, { recursive: true });
 }
