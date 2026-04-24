@@ -10,10 +10,11 @@
 - [x] `FSD-006` — Create a new `fsd-spec` skill ([task-fsd-006](task-fsd-006.md))
 - [x] `FSD-007` — Create a new `fsd-roadmap` skill ([task-fsd-007](task-fsd-007.md))
 - [x] `FSD-008` — Create a new `fsd-plan` skill ([task-fsd-008](task-fsd-008.md))
-- [ ] `FSD-009` — Create a new `fsd-execute-plan` skill
+- [x] `FSD-009` — Create a new `fsd-execute-plan` skill ([task-fsd-009](task-fsd-009.md))
 - [ ] `FSD-010` — Create a new `fsd-research` skill
 - [ ] `FSD-011` — Create a new `fsd-ship` skill
 - [x] `FSD-012` — Change directory naming convention from `/docs/plans` to `/planning` ([task-fsd-012](task-fsd-012.md))
 - [x] `FSD-013` — Add `spec/`, `plan/`, `research/` storage kinds to `.fsd/` structure (extends FSD-003) ([task-fsd-013](task-fsd-013.md))
 - [x] `FSD-014` — Create a new `fsd-spec-update` skill (editing existing specs; deferred from FSD-006) ([task-fsd-014](task-fsd-014.md))
 - [x] `FSD-015` — Create a new `fsd-plan-update` skill (editing existing plans; deferred from FSD-008) ([task-fsd-015](task-fsd-015.md))
+- [x] `FSD-016` — Create a `/fsd-help` skill to guide users how to effectively use the FSD framework ([task-fsd-016](task-fsd-016.md))
