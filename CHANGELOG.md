@@ -42,6 +42,43 @@ The authoritative version lives in `plugin/.claude-plugin/plugin.json`. The READ
 
 ---
 
+## [0.11.0] - 2026-04-24
+
+### Added
+
+- **`/fsd-plan-update` skill** (FSD-015) — ongoing-edits surface for plan artifacts, pairing with `/fsd-plan`'s create surface to complete the "create once, edit many" shape for plans (mirrors the `/fsd-spec` + `/fsd-spec-update` pair that FSD-006/014 established). Dispatches three surgical operations that re-validate via `validatePlan` before writing and preserve untouched sections byte-for-byte:
+  - `update` — surgical edit of ONE thing per call: `title` (rewrites frontmatter + body `# <title>` heading in a single edit), `status` (flips draft ↔ active; refuses `archived` with a pointer to the `archive` op), `related` (add/remove one entry; `CROSS_REF`-validated), `tags` (add/remove one entry; `KEBAB_CASE`-validated), `depends_on` (add/remove one entry; `KEBAB_CASE`-validated), `task` (set non-empty string / clear removes key), `estimate` (set non-empty string / clear removes key), or one of the six canonical body sections (Context / Approach / Phases / Risks / Acceptance / Open questions). Running `update` with an unchanged value returns `{ ok: true, written: false }`; `clear` on an already-absent scalar is a no-op; `add` of a duplicate array entry is a no-op; `remove` of a missing array entry is an error (not silent success). `update remove-related` does NOT special-case the spec-hard-require link — engineer takes responsibility for keeping the plan authorable.
+  - `archive` — flips frontmatter `status: archived`. Idempotent when already archived.
+  - `supersede` — two-file cross-plan op: adds `oldId` to the new plan's `supersedes:` array AND flips old plan's `status` to `archived`; bumps `updated:` on both. Best-effort atomic: if the second write fails, the first is rolled back from an in-memory backup (covered by a deterministic rollback test). Idempotent when the new plan already lists the old id AND the old plan is already archived.
+- **`plugin/scripts/plan-update.js`** — backing module exporting `parsePlan`, `readPlan`, `writePlanAtomic`, `rewriteFrontmatter`, `update`, `archive`, `supersede`, and `today`. The parser records line ranges for frontmatter, title line, and each body section (keyed by canonical `SECTION_ORDER` id imported from `plan.js`); user-authored extra `##` headings are tolerated (captured with `id: null` and still spliceable). `rewriteFrontmatter` handles both scalar edits and block-sequence array replacement with the same key-order preservation `spec-update.js` ships. Every op updates frontmatter `updated:` to today and re-validates via `validatePlan` before touching disk; failed writes leave the file on disk byte-unchanged (atomic tmp-file + rename).
+- **`validatePlan.supersedes`** in `plugin/scripts/validator.js` — optional array of kebab-case plan ids, validated the same way `validateSpec.supersedes` already was. Additive one-line extension.
+- **CLI entry point** on `plan-update.js` — `node scripts/plan-update.js <projectPath> <op> [--key=value ...]`. Exit 0 on success, 1 on op failure, 2 on invocation error. The skill's Step 5 delegates via this surface.
+- **New test files** — `plugin/tests/test-plan-update.js` (32 tests: parser coverage for minimal/all-6-sections/unknown-heading-tolerance/malformed-frontmatter; every `update` sub-target including the three new ones (depends_on add/remove, task set/clear, estimate set/clear); byte-preservation of untouched sections; `archive` idempotency; `supersede` happy path + refusals when either plan is missing + idempotency when both halves already applied + `newId === oldId` rejection + deterministic rollback test that corrupts the old plan to force a second-write failure and verifies the new plan is restored from backup; every-op-bumps-`updated` sweep; round-trip through `scanArtifacts` after every op; refusal path when target plan doesn't exist) and `plugin/tests/test-fsd-plan-update.js` (8 integration tests: CLI update-title, CLI update-related add/remove roundtrip, CLI update-depends_on add/remove roundtrip, CLI update-task set/clear roundtrip, CLI archive against a missing plan, CLI supersede happy path + idempotency, CLI usage error exit code, and SKILL.md sanity — name, argument-hint, all three op names present, all eight update sub-targets present, `/fsd-plan` cross-reference, refuse-when-missing documentation, preview-before-write discipline, spec-hard-require footgun warning present in Guardrails, auto-commit forbidden).
+- **+2 tests in `test-artifact-validator.js`** — `validatePlan.supersedes` accepts valid kebab-case array, rejects non-kebab entries. Mirrors the existing spec-supersedes tests.
+
+### Changed
+
+- **README.md** — Commands section adds `### /fsd-plan-update` with a per-op table; `/fsd-plan`'s entry updated to point at `/fsd-plan-update` as the editor. Artifact Schemas section adds `supersedes` to the plan-only optional fields list. Version header bumped to 0.11.0.
+
+### Compatibility
+
+Fully backward-compatible. No migration required:
+
+- `validatePlan.supersedes` is additive — plans authored in 0.10.0 that don't set the field continue to validate identically. Plans that already set a (legal kebab-case) `supersedes` array only validate cleaner in 0.11.0.
+- `loadContent` / `loadProjectContext` / `scanArtifacts` return shapes are all unchanged.
+- `/fsd-plan-update` is additive — no existing skill or command behavior changes.
+
+### Out of scope (intentional, follow-up work)
+
+- `rename-id` — physically renames the plan file + updates frontmatter `id:` + rewrites cross-references in other specs/plans/research. Requires cross-file reference rewriting; follow-up FSD.
+- `unarchive` — flip `status: archived` → active. Strict one-way op keeps the mental model clean for v1; add later if real usage demands it. There is no `unapprove` counterpart on plans because plans have no `approved` field.
+- Edit history / audit log — no append-only record of who-edited-what.
+- Mass/batch ops — editing many plans at once (e.g., "retag all plans with `legacy`").
+- A "protect spec-link" guard on `update remove-related` — `/fsd-plan`'s spec-hard-require is enforced at create time, not at edit time; removing the sole `spec/<id>` entry leaves the plan unauthor-able by `/fsd-plan` but edit-able by this skill. Follow-up FSD if real usage surfaces footguns.
+- Cross-file reference resolution on `related:`, `depends_on:`, and `supersedes:` — mirrors the FSD-004/005/006/007/008/014 stance: format-only validation.
+
+---
+
 ## [0.10.0] - 2026-04-24
 
 ### Added

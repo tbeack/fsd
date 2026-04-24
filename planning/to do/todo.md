@@ -16,3 +16,4 @@
 - [x] `FSD-012` — Change directory naming convention from `/docs/plans` to `/planning` ([task-fsd-012](task-fsd-012.md))
 - [x] `FSD-013` — Add `spec/`, `plan/`, `research/` storage kinds to `.fsd/` structure (extends FSD-003) ([task-fsd-013](task-fsd-013.md))
 - [x] `FSD-014` — Create a new `fsd-spec-update` skill (editing existing specs; deferred from FSD-006) ([task-fsd-014](task-fsd-014.md))
+- [x] `FSD-015` — Create a new `fsd-plan-update` skill (editing existing plans; deferred from FSD-008) ([task-fsd-015](task-fsd-015.md))

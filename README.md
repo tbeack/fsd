@@ -1,6 +1,6 @@
 # FSD — Full Stack Development Framework
 
-**Version 0.10.0** — released 2026-04-24 · [Changelog](./CHANGELOG.md)
+**Version 0.11.0** — released 2026-04-24 · [Changelog](./CHANGELOG.md)
 
 A multi-layer meta-framework plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with schema-validated skills, agents, and commands. Content is resolved across multiple layers so you can customize or override anything without touching the plugin itself.
 
@@ -217,7 +217,19 @@ Six-step flow:
 5. **Architecture delta** — if `planning/ARCHITECTURE.md` exists, offers to append ADR-style decisions and/or section content. If missing, offers lazy creation seeded from this plan's technical decisions.
 6. **ExitPlanMode + write** — on engineer approval the harness grants, writes the plan artifact and any architecture delta. Never auto-commits.
 
-Usage: `/fsd-plan [spec-id]`. Omit the argument to have the skill list existing specs and ask which one. Plan id defaults to the spec id (different directories, no collision). Create-only — editing existing plans is a future `/fsd-plan-update` skill.
+Usage: `/fsd-plan [spec-id]`. Omit the argument to have the skill list existing specs and ask which one. Plan id defaults to the spec id (different directories, no collision). Create-only — editing existing plans is handled by `/fsd-plan-update` (see below).
+
+### `/fsd-plan-update`
+
+Edit an existing plan artifact. Dispatches three surgical operations that re-validate via `validatePlan` before writing and preserve untouched sections byte-for-byte:
+
+| Op | Purpose |
+|---|---|
+| `update` | Surgical edit of ONE thing: `title`, `status` (draft ↔ active), `related` (add/remove one), `tags` (add/remove one), `depends_on` (add/remove one), `task` (set/clear), `estimate` (set/clear), OR one of the six body sections (Context / Approach / Phases / Risks / Acceptance / Open questions). |
+| `archive` | Flip `status: archived`. Idempotent. |
+| `supersede` | Add `oldId` to the new plan's `supersedes:` array AND archive the old plan. Best-effort atomic: if the second write fails, the first is rolled back from an in-memory backup. |
+
+Refuses to run if the target plan doesn't exist — use `/fsd-plan` to create new plans. Every op bumps frontmatter `updated:` to today. `update remove-related` does NOT special-case the spec-hard-require link — engineer takes responsibility for keeping the plan authorable. Out of scope for v1: `rename-id` (file rename), `unarchive`, mass/batch ops, edit history.
 
 ### `/fsd:list`
 
@@ -522,7 +534,7 @@ related:
 ---
 ```
 
-Plan-only optional fields: `task` (string, often an FSD-NNN reference), `depends_on` (array of plan ids), `estimate` (string).
+Plan-only optional fields: `task` (string, often an FSD-NNN reference), `depends_on` (array of plan ids), `estimate` (string), `supersedes` (array of plan ids).
 
 Plans are authored by `/fsd-plan`, which hard-requires a `related: spec/<id>` entry pointing at an existing spec. Archived specs are refused; unapproved specs require explicit engineer opt-in (the validator itself is format-only — the hard-require is enforced at author time).
 
