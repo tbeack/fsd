@@ -215,6 +215,10 @@ function validatePlan(meta) {
     errors.push('estimate: must be a non-empty string');
   }
 
+  if (meta.supersedes !== undefined && !isStringArrayMatching(meta.supersedes, KEBAB_CASE)) {
+    errors.push('supersedes: must be an array of kebab-case plan ids');
+  }
+
   return { valid: errors.length === 0, errors, warnings };
 }
 

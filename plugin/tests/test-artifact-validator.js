@@ -211,6 +211,19 @@ for (const v of [validateSpec, validatePlan, validateResearch]) {
   assert.ok(b.errors.some(e => e.startsWith('estimate:')));
 }
 
+// Test 19a: plan.supersedes with valid kebab-case ids accepted
+{
+  const r = validatePlan(minimal({ supersedes: ['auth-v1', 'session-legacy'] }));
+  assert.strictEqual(r.valid, true, r.errors.join('; '));
+}
+
+// Test 19b: plan.supersedes with non-kebab id rejected
+{
+  const r = validatePlan(minimal({ supersedes: ['Auth-V1'] }));
+  assert.strictEqual(r.valid, false);
+  assert.ok(r.errors.some(e => e.startsWith('supersedes:')));
+}
+
 // --- Research-specific ---
 
 // Test 20: Valid full research
