@@ -105,10 +105,14 @@ When picking up a task:
 
 ## Versioning & Release
 
-Three files must stay in sync for every release:
-1. `plugin/.claude-plugin/plugin.json` — `"version": "X.Y.Z"`
-2. `README.md` — `**Version X.Y.Z**` header line
-3. `CHANGELOG.md` — new `## [X.Y.Z]` block (Keep-a-Changelog format)
+Five files must stay in sync for every release:
+1. `.claude-plugin/plugin.json` — `"version": "X.Y.Z"` (root manifest — what Claude Code reads for registration)
+2. `.claude-plugin/marketplace.json` — `"version": "X.Y.Z"` inside the `plugins` array entry
+3. `plugin/.claude-plugin/plugin.json` — `"version": "X.Y.Z"` (plugin-layer manifest)
+4. `README.md` — `**Version X.Y.Z**` header line
+5. `CHANGELOG.md` — new `## [X.Y.Z]` block (Keep-a-Changelog format)
+
+**Root vs plugin `.claude-plugin/`:** Claude Code reads `.claude-plugin/` at the repo root for plugin registration. `marketplace.json` declares `"source": "./plugin"` so skills/agents/commands are resolved from `plugin/`. Both manifests must be bumped together — forgetting the root ones leaves Claude Code loading a stale version with fewer skills.
 
 Bump rules:
 - **MAJOR**: removed/renamed command, skill, or exported function
