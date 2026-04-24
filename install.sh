@@ -3,7 +3,7 @@ set -euo pipefail
 
 REPO="https://github.com/tbeack/fsd.git"
 INSTALL_DIR="${HOME}/.claude/plugins/fsd"
-SETTINGS_FILE="${HOME}/.claude/settings.json"
+FORCE="${1:-}"
 
 # --- helpers ---
 
@@ -18,6 +18,11 @@ echo ""
 echo "FSD Installer"
 echo "============="
 echo ""
+
+if [ "$FORCE" = "--force" ]; then
+  info "Mode: force reinstall (core overwrite, ~/.fsd/ user layer untouched)"
+  echo ""
+fi
 
 # Check git
 if ! command -v git &>/dev/null; then
@@ -41,10 +46,18 @@ ok "Node.js $NODE_MAJOR found"
 echo ""
 
 if [ -d "$INSTALL_DIR" ]; then
-  info "FSD already installed at $INSTALL_DIR"
-  info "Pulling latest changes..."
-  git -C "$INSTALL_DIR" pull origin main
-  ok "Updated to latest"
+  if [ "$FORCE" = "--force" ]; then
+    info "Force-reinstalling FSD core at $INSTALL_DIR..."
+    info "(~/.fsd/ user layer and project .fsd/ dirs are untouched)"
+    git -C "$INSTALL_DIR" fetch origin main
+    git -C "$INSTALL_DIR" reset --hard origin/main
+    ok "Core reset to origin/main"
+  else
+    info "FSD already installed at $INSTALL_DIR — updating..."
+    info "Tip: use --force to hard-reset the core if you hit issues"
+    git -C "$INSTALL_DIR" pull origin main
+    ok "Updated to latest"
+  fi
 else
   info "Installing FSD to $INSTALL_DIR"
   mkdir -p "$(dirname "$INSTALL_DIR")"
@@ -57,48 +70,41 @@ fi
 echo ""
 info "Running tests..."
 
-if bash "$INSTALL_DIR/tests/run-tests.sh" &>/dev/null; then
+if bash "$INSTALL_DIR/plugin/tests/run-tests.sh" &>/dev/null; then
   ok "All tests passed"
 else
-  warn "Some tests failed. Run 'bash $INSTALL_DIR/tests/run-tests.sh' for details."
+  warn "Some tests failed — run for details:"
+  warn "  bash $INSTALL_DIR/plugin/tests/run-tests.sh"
 fi
 
 # --- validate content ---
 
 info "Validating content..."
 
-VALIDATE_OUTPUT=$(node "$INSTALL_DIR/scripts/validate.js" "$INSTALL_DIR" 2>&1) || true
+VALIDATE_OUTPUT=$(node "$INSTALL_DIR/plugin/scripts/validate.js" "$INSTALL_DIR/plugin" 2>&1) || true
 if echo "$VALIDATE_OUTPUT" | grep -q "0 error(s)"; then
   ok "All content passes schema validation"
 else
-  warn "Validation issues found. Run /fsd:validate in Claude Code for details."
+  warn "Validation issues found — run /fsd:validate in Claude Code for details."
 fi
 
-# --- check settings.json registration ---
+# --- verify plugin discovery ---
 
 echo ""
 
-if [ -f "$SETTINGS_FILE" ]; then
-  if grep -q "fsd" "$SETTINGS_FILE" 2>/dev/null; then
-    ok "FSD found in $SETTINGS_FILE"
-  else
-    warn "FSD not found in $SETTINGS_FILE"
-    info "If Claude Code doesn't auto-discover plugins, add this to settings.json:"
-    echo ""
-    echo "    \"plugins\": [\"~/.claude/plugins/fsd\"]"
-    echo ""
-  fi
+PLUGIN_JSON="$INSTALL_DIR/plugin/.claude-plugin/plugin.json"
+if [ -f "$PLUGIN_JSON" ]; then
+  # Claude Code auto-discovers plugins placed under ~/.claude/plugins/ — no settings.json
+  # entry is required. Presence of plugin.json confirms the layout is correct.
+  ok "Plugin manifest found — Claude Code will auto-discover from ~/.claude/plugins/"
 else
-  info "No settings.json found at $SETTINGS_FILE"
-  info "Claude Code may auto-discover the plugin. If not, create settings.json with:"
-  echo ""
-  echo "    { \"plugins\": [\"~/.claude/plugins/fsd\"] }"
-  echo ""
+  warn "Plugin manifest missing at $PLUGIN_JSON — installation may be incomplete."
+  warn "Try: bash install.sh --force"
 fi
 
 # --- version info ---
 
-VERSION=$(node -e "console.log(require('$INSTALL_DIR/.claude-plugin/plugin.json').version)")
+VERSION=$(node -e "console.log(require('$INSTALL_DIR/plugin/.claude-plugin/plugin.json').version)" 2>/dev/null || echo "unknown")
 
 echo ""
 echo "FSD v${VERSION} installed at $INSTALL_DIR"
@@ -108,4 +114,7 @@ echo "  1. Restart Claude Code (or start a new session)"
 echo "  2. You should see 'FSD Framework Active' on startup"
 echo "  3. Run /fsd:validate to confirm everything works"
 echo "  4. Run /fsd:init in a project to create a .fsd/ space"
+echo ""
+echo "To force a clean reinstall of the core at any time:"
+echo "  bash install.sh --force"
 echo ""
