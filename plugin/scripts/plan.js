@@ -40,10 +40,16 @@ function today() {
 }
 
 const SECTION_ORDER = ['context', 'approach', 'phases', 'risks', 'acceptance', 'open_questions'];
+const PHASES_PLACEHOLDER = [
+  '- [ ] **Phase 01** — _Phase title_',
+  '  - _First step_',
+  '  - _Second step_',
+  '- [ ] **Phase 02** — _..._',
+].join('\n');
 const SECTION_META = {
   context:        { heading: 'Context',        placeholder: '_Spec summary + relevant code + prior decisions touched by this plan._' },
   approach:       { heading: 'Approach',       placeholder: '_High-level architectural strategy._' },
-  phases:         { heading: 'Phases',         placeholder: '_Phase-by-phase implementation breakdown with concrete steps._' },
+  phases:         { heading: 'Phases',         placeholder: PHASES_PLACEHOLDER },
   risks:          { heading: 'Risks',          placeholder: '_Known gotchas and mitigations._' },
   acceptance:     { heading: 'Acceptance',     placeholder: '- [ ] _Falsifiable verification step_' },
   open_questions: { heading: 'Open questions', placeholder: '_Anything deferred or still unclear at write time._' },
@@ -55,6 +61,13 @@ function yamlLine(key, value) {
   if (Array.isArray(value)) {
     if (value.length === 0) return `${key}: []`;
     return `${key}:\n${value.map(v => `  - ${v}`).join('\n')}`;
+  }
+  if (value && typeof value === 'object') {
+    const entries = Object.keys(value)
+      .filter(k => typeof value[k] === 'string' && value[k].length > 0)
+      .map(k => `  ${k}: ${value[k]}`);
+    if (entries.length === 0) return `${key}: {}`;
+    return `${key}:\n${entries.join('\n')}`;
   }
   return `${key}: ${value}`;
 }
@@ -91,6 +104,12 @@ function renderPlan(data) {
   if (data.estimate) meta.estimate = data.estimate;
   if (Array.isArray(data.related) && data.related.length) meta.related = data.related;
   if (Array.isArray(data.tags) && data.tags.length) meta.tags = data.tags;
+  if (data.verification && typeof data.verification === 'object' && !Array.isArray(data.verification)) {
+    const filtered = Object.keys(data.verification)
+      .filter(k => typeof data.verification[k] === 'string' && data.verification[k].length > 0)
+      .reduce((acc, k) => { acc[k] = data.verification[k]; return acc; }, {});
+    if (Object.keys(filtered).length) meta.verification = filtered;
+  }
 
   const lines = ['---'];
   for (const key of Object.keys(meta)) lines.push(yamlLine(key, meta[key]));
@@ -180,6 +199,127 @@ function checkSpecPrecondition({ fsdDir, config, specId }) {
   }
 
   return { ok: true, spec: { path: specPath, meta, validation }, warnings };
+}
+
+// ---- plan precondition --------------------------------------------------
+
+/**
+ * Verify the state of a target plan before `/fsd-execute-plan` begins. Mirror
+ * of `checkSpecPrecondition` but for plans. Returns on first hard failure;
+ * aggregates soft warnings. Lazy-requires plan-update.js to avoid a circular
+ * module load.
+ *
+ * Hard failures (ok: false):
+ *   - Plan file missing
+ *   - status === 'archived'
+ *   - No `- [ ] **Phase NN**` entries in ## Phases
+ *   - No `- [ ]` entries in ## Acceptance
+ *   - Linked spec missing or archived
+ *
+ * Soft warnings (ok: true, warnings non-empty):
+ *   - status === 'draft'
+ *   - Linked spec approved: false
+ *
+ * @param {Object} opts
+ * @param {string}  opts.fsdDir
+ * @param {Object} [opts.config]
+ * @param {string}  opts.planId
+ * @returns {{
+ *   ok: boolean,
+ *   reason?: string,
+ *   plan?: { meta: Object, body: string, path: string, phases: Array },
+ *   warnings: string[],
+ * }}
+ */
+function checkPlanPrecondition({ fsdDir, config, planId }) {
+  if (!fsdDir) return { ok: false, reason: 'checkPlanPrecondition: fsdDir is required', warnings: [] };
+  if (!planId) return { ok: false, reason: 'checkPlanPrecondition: planId is required', warnings: [] };
+
+  const planPath = resolvePlanPath({ projectPath: fsdDir, config, id: planId });
+  if (!fs.existsSync(planPath)) {
+    return {
+      ok: false,
+      reason: `plan not found at ${planPath} — create it with /fsd-plan first`,
+      warnings: [],
+    };
+  }
+
+  // Lazy require to avoid a circular load (plan-update.js requires plan.js).
+  const { parsePlan, parsePhases } = require(path.join(__dirname, 'plan-update.js'));
+
+  const content = fs.readFileSync(planPath, 'utf-8');
+  let parsed;
+  try {
+    parsed = parsePlan(content);
+  } catch (e) {
+    return { ok: false, reason: `plan parse failed: ${e.message}`, warnings: [] };
+  }
+  const meta = parsed.frontmatter;
+
+  if (meta.status === 'archived') {
+    return {
+      ok: false,
+      reason: `plan "${planId}" is archived — unarchive via /fsd-plan-update or pick another plan`,
+      warnings: [],
+    };
+  }
+
+  const phases = parsePhases(content);
+  if (phases.length === 0) {
+    return {
+      ok: false,
+      reason: `plan "${planId}" has no \`- [ ] **Phase NN**\` entries in ## Phases — finish authoring via /fsd-plan-update`,
+      warnings: [],
+    };
+  }
+
+  const acceptance = parsed.sections.find(s => s.id === 'acceptance');
+  const hasOpenAc = acceptance
+    ? parsed.lines
+        .slice(acceptance.range[0] + 1, acceptance.range[1])
+        .some(l => /^-\s+\[\s\]\s+\S/.test(l))
+    : false;
+  if (!hasOpenAc) {
+    return {
+      ok: false,
+      reason: `plan "${planId}" has no open \`- [ ]\` acceptance entries — finish authoring via /fsd-plan-update`,
+      warnings: [],
+    };
+  }
+
+  // Linked spec check: pluck the first spec/<id> from related.
+  const warnings = [];
+  const related = Array.isArray(meta.related) ? meta.related : [];
+  const specLink = related.find(r => typeof r === 'string' && r.startsWith('spec/'));
+  if (!specLink) {
+    return {
+      ok: false,
+      reason: `plan "${planId}" is missing its linked spec (no \`spec/<id>\` in related) — edit via /fsd-plan-update`,
+      warnings: [],
+    };
+  }
+  const specId = specLink.slice('spec/'.length);
+  const specCheck = checkSpecPrecondition({ fsdDir, config, specId });
+  if (!specCheck.ok) {
+    return { ok: false, reason: specCheck.reason, warnings: [] };
+  }
+  if (specCheck.warnings && specCheck.warnings.length) {
+    warnings.push(...specCheck.warnings);
+  }
+
+  if (meta.status === 'draft') {
+    warnings.push(`plan "${planId}" status is "draft", not "active" — execute anyway?`);
+  }
+
+  // Body (after frontmatter) for Step 2 pre-flight summary re-use.
+  const bodyStart = parsed.frontmatterLines[1] + 1;
+  const body = parsed.lines.slice(bodyStart).join('\n');
+
+  return {
+    ok: true,
+    plan: { meta, body, path: planPath, phases },
+    warnings,
+  };
 }
 
 // ---- write --------------------------------------------------------------
@@ -301,6 +441,9 @@ function writePlanFile({ projectPath, config, planningDir, planData, acknowledge
   if (data.estimate) metaForValidation.estimate = data.estimate;
   if (Array.isArray(data.related) && data.related.length) metaForValidation.related = data.related;
   if (Array.isArray(data.tags) && data.tags.length) metaForValidation.tags = data.tags;
+  if (data.verification && typeof data.verification === 'object' && !Array.isArray(data.verification)) {
+    metaForValidation.verification = data.verification;
+  }
 
   const validation = validatePlan(metaForValidation);
   if (!validation.valid) {
@@ -417,6 +560,7 @@ module.exports = {
   writePlanFile,
   resolvePlanPath,
   checkSpecPrecondition,
+  checkPlanPrecondition,
   today,
   SECTION_ORDER,
   SECTION_META,

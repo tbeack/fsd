@@ -20,10 +20,12 @@ const {
   writePlanFile,
   resolvePlanPath,
   checkSpecPrecondition,
+  checkPlanPrecondition,
   today,
   SECTION_ORDER,
   SECTION_META,
 } = require(path.join(__dirname, '..', 'scripts', 'plan.js'));
+const { archive: archivePlan } = require(path.join(__dirname, '..', 'scripts', 'plan-update.js'));
 const { validatePlan } = require(path.join(__dirname, '..', 'scripts', 'validator.js'));
 const { scanArtifacts } = require(path.join(__dirname, '..', 'scripts', 'loader.js'));
 const { parseYaml } = require(path.join(__dirname, '..', 'scripts', 'yaml-parser.js'));
@@ -374,6 +376,152 @@ function extractFrontmatter(content) {
   assert.strictEqual(plans.length, 1);
   assert.strictEqual(plans[0].id, 'auth');
   assert.strictEqual(plans[0].validation.valid, true, plans[0].validation.errors.join('; '));
+}
+
+// --- phases placeholder is the checkbox convention (FSD-009) ---
+
+// Test 23: SECTION_META.phases.placeholder emits the Phase NN checkbox lines.
+{
+  const p = SECTION_META.phases.placeholder;
+  assert.match(p, /- \[ \] \*\*Phase 01\*\*/, 'phases placeholder must seed Phase 01 checkbox');
+  assert.match(p, /- \[ \] \*\*Phase 02\*\*/, 'phases placeholder must seed Phase 02 checkbox');
+  // Indented step entries.
+  assert.match(p, /\n  - /);
+}
+
+// Test 24: renderPlan emits the new placeholder verbatim when phases is skipped.
+{
+  const out = renderPlan({ project: 'P', id: 'p', title: 'P', related: ['spec/x'] });
+  assert.ok(out.includes('- [ ] **Phase 01** — _Phase title_'));
+  assert.ok(out.includes('- [ ] **Phase 02** — _..._'));
+}
+
+// --- verification frontmatter emit (FSD-009) ---
+
+// Test 25: plan-level `verification:` object is emitted and validated.
+{
+  const out = renderPlan({
+    project: 'P', id: 'p', title: 'P', related: ['spec/x'],
+    verification: { tests: 'bash tests.sh', validate: 'node v.js' },
+  });
+  assert.ok(out.includes('verification:'));
+  assert.ok(/  tests: bash tests\.sh/.test(out));
+  assert.ok(/  validate: node v\.js/.test(out));
+  const fm = extractFrontmatter(out);
+  const v = validatePlan(fm);
+  assert.strictEqual(v.valid, true, v.errors.join('; '));
+  assert.deepStrictEqual(fm.verification, { tests: 'bash tests.sh', validate: 'node v.js' });
+}
+
+// Test 26: empty/omitted verification does not land in output.
+{
+  const absent = renderPlan({ project: 'P', id: 'p', title: 'P', related: ['spec/x'] });
+  assert.ok(!absent.includes('verification:'));
+  const emptySubs = renderPlan({ project: 'P', id: 'p', title: 'P', related: ['spec/x'], verification: { tests: '' } });
+  assert.ok(!emptySubs.includes('verification:'));
+}
+
+// --- checkPlanPrecondition (FSD-009) ---
+
+function seedPlanForPre({ fsdDir, planningDir, id, specId = null, status = 'active', phases, acceptance, acknowledgeUnapproved = false }) {
+  const sid = specId || `${id}-spec`;
+  if (!fs.existsSync(path.join(fsdDir, 'spec', `${sid}.md`))) {
+    seedSpec({ fsdDir, planningDir, id: sid, title: sid });
+  }
+  const res = writePlanFile({
+    projectPath: fsdDir, planningDir,
+    planData: {
+      id, title: id, status, related: [`spec/${sid}`],
+      sections: {
+        phases: phases !== undefined ? phases : '- [ ] **Phase 01** — First\n- [ ] **Phase 02** — Second',
+        acceptance: acceptance !== undefined ? acceptance : '- [ ] first\n- [ ] second',
+      },
+    },
+    acknowledgeUnapproved,
+  });
+  assert.strictEqual(res.ok, true, res.reason);
+  return res.written[0];
+}
+
+// Test 27: happy path — ok: true, plan populated with parsed phases, warnings empty.
+{
+  const { fsdDir, planningDir } = mkTmpProject();
+  seedPlanForPre({ fsdDir, planningDir, id: 'p1' });
+  const r = checkPlanPrecondition({ fsdDir, planId: 'p1' });
+  assert.strictEqual(r.ok, true, r.reason);
+  assert.ok(r.plan && typeof r.plan.meta === 'object');
+  assert.ok(typeof r.plan.body === 'string' && r.plan.body.length > 0);
+  assert.strictEqual(r.plan.phases.length, 2);
+  assert.deepStrictEqual(r.warnings, []);
+}
+
+// Test 28: refuse when plan file missing.
+{
+  const { fsdDir } = mkTmpProject();
+  const r = checkPlanPrecondition({ fsdDir, planId: 'none' });
+  assert.strictEqual(r.ok, false);
+  assert.match(r.reason, /not found/);
+}
+
+// Test 29: refuse when plan is archived.
+{
+  const { fsdDir, planningDir } = mkTmpProject();
+  const planPath = seedPlanForPre({ fsdDir, planningDir, id: 'p2' });
+  archivePlan({ planPath });
+  const r = checkPlanPrecondition({ fsdDir, planId: 'p2' });
+  assert.strictEqual(r.ok, false);
+  assert.match(r.reason, /archived/);
+  assert.match(r.reason, /\/fsd-plan-update/);
+}
+
+// Test 30: refuse when plan has no Phase NN checkboxes.
+{
+  const { fsdDir, planningDir } = mkTmpProject();
+  seedPlanForPre({ fsdDir, planningDir, id: 'p3',
+    phases: 'Freeform prose with no checkbox entries.' });
+  const r = checkPlanPrecondition({ fsdDir, planId: 'p3' });
+  assert.strictEqual(r.ok, false);
+  assert.match(r.reason, /Phase NN|## Phases/);
+}
+
+// Test 31: refuse when acceptance has no open `- [ ]` entries.
+{
+  const { fsdDir, planningDir } = mkTmpProject();
+  seedPlanForPre({ fsdDir, planningDir, id: 'p4',
+    acceptance: 'All criteria shipped pre-flight.' });
+  const r = checkPlanPrecondition({ fsdDir, planId: 'p4' });
+  assert.strictEqual(r.ok, false);
+  assert.match(r.reason, /acceptance/i);
+}
+
+// Test 32: warn (not refuse) when plan status is draft.
+{
+  const { fsdDir, planningDir } = mkTmpProject();
+  seedPlanForPre({ fsdDir, planningDir, id: 'p5', status: 'draft' });
+  const r = checkPlanPrecondition({ fsdDir, planId: 'p5' });
+  assert.strictEqual(r.ok, true);
+  assert.ok(r.warnings.some(w => /draft/i.test(w)));
+}
+
+// Test 33: warn (not refuse) when linked spec is unapproved.
+{
+  const { fsdDir, planningDir } = mkTmpProject();
+  seedSpec({ fsdDir, planningDir, id: 'unapp', title: 'Unapp', approved: false });
+  seedPlanForPre({ fsdDir, planningDir, id: 'p6', specId: 'unapp', acknowledgeUnapproved: true });
+  const r = checkPlanPrecondition({ fsdDir, planId: 'p6' });
+  assert.strictEqual(r.ok, true);
+  assert.ok(r.warnings.some(w => /approved: false/.test(w)));
+}
+
+// Test 34: refuse when linked spec is archived.
+{
+  const { fsdDir, planningDir } = mkTmpProject();
+  seedPlanForPre({ fsdDir, planningDir, id: 'p7', specId: 'dies' });
+  const { archive: archiveSpec } = require(path.join(__dirname, '..', 'scripts', 'spec-update.js'));
+  archiveSpec({ specPath: path.join(fsdDir, 'spec', 'dies.md') });
+  const r = checkPlanPrecondition({ fsdDir, planId: 'p7' });
+  assert.strictEqual(r.ok, false);
+  assert.match(r.reason, /archived/);
 }
 
 console.log('  All plan tests passed');

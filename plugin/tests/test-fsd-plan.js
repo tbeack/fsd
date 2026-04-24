@@ -287,4 +287,36 @@ function runArchCli(planningDir, opAndArgs) {
   }
 }
 
+// --- Phase-checkbox contract + verification override (FSD-009) ---
+
+// Test 17: SKILL.md Step 4 documents the phase checkbox convention.
+{
+  const content = fs.readFileSync(skillPath, 'utf-8');
+  assert.ok(/\- \[ \] \*\*Phase/.test(content),
+    'SKILL.md must show the `- [ ] **Phase NN**` checkbox convention');
+  assert.ok(/parsePhases/.test(content),
+    'SKILL.md must name parsePhases as the parser for the convention');
+  assert.ok(/two-digit/.test(content));
+}
+
+// Test 18: SKILL.md frontmatter interview includes the optional plan-level verification prompt.
+{
+  const content = fs.readFileSync(skillPath, 'utf-8');
+  assert.ok(/verification/i.test(content), 'SKILL.md must mention plan-level verification');
+  assert.ok(/override/i.test(content), 'SKILL.md must frame it as a PROJECT.md override');
+  assert.ok(/skip/i.test(content), 'SKILL.md must document the skip escape');
+  assert.ok(/\/fsd-execute-plan/.test(content), 'SKILL.md must cross-reference the executor');
+}
+
+// Test 19: renderPlan emits the new phases placeholder verbatim (snapshot).
+{
+  const { renderPlan, SECTION_META } = require(path.join(pluginRoot, 'scripts', 'plan.js'));
+  const out = renderPlan({ project: 'P', id: 'p', title: 'P', related: ['spec/x'] });
+  const expected = SECTION_META.phases.placeholder;
+  assert.ok(out.includes(expected), 'rendered plan body must include the phases placeholder');
+  // Spot-check both phase lines.
+  assert.ok(expected.includes('- [ ] **Phase 01** — _Phase title_'));
+  assert.ok(expected.includes('- [ ] **Phase 02** — _..._'));
+}
+
 console.log('  All fsd-plan integration tests passed');

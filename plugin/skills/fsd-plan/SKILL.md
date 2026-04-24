@@ -160,6 +160,23 @@ say "go ahead", move to Step 4.
 
 Draft the plan section-by-section. Do not dump the whole draft at once.
 
+**Phase checkbox convention.** Structure the `## Phases` section so
+`/fsd-execute-plan` can track progress deterministically: each phase is a
+top-level checkbox line with two-digit zero-padded numbering, steps
+indented beneath. Example:
+
+```
+- [ ] **Phase 01** — Validator extension
+  - Add helper in validator.js
+  - Wire into validateProject + validatePlan
+- [ ] **Phase 02** — Skill retrofit
+  - Update SKILL.md
+```
+
+The executor matches `- [ ] **Phase NN**` entries via `parsePhases` and
+flips each `[ ]` to `[x]` as verification passes. Freeform prose between
+phases is tolerated — only the checkbox lines are parsed.
+
 For **each** of the six body sections (Context, Approach, Phases, Risks,
 Acceptance, Open questions):
 
@@ -194,6 +211,13 @@ what the context doesn't already give you:
   Optional.
 - `tags` — "Any tags? (comma-separated kebab-case, or 'none')".
   Optional.
+- `verification` — "Plan-specific verification commands that override
+  PROJECT.md? `/fsd-execute-plan` runs these after each phase. Reply like
+  `tests: ..., validate: ...` using any subset of
+  `tests | validate | typecheck | lint`, or 'skip' to inherit from
+  PROJECT.md." Parse the comma-separated reply into an object. On 'skip',
+  omit the field — the executor falls back to PROJECT.md's
+  `verification:` or prompts the engineer.
 
 Do NOT ask about `project:` (auto-injected) or `related:` (fixed from
 the spec hard-require + any additional related refs the engineer names).
