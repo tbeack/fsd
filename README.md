@@ -1,6 +1,6 @@
 # FSD — Full Stack Development Framework
 
-**Version 0.7.0** — released 2026-04-23 · [Changelog](./CHANGELOG.md)
+**Version 0.8.0** — released 2026-04-24 · [Changelog](./CHANGELOG.md)
 
 A multi-layer meta-framework plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with schema-validated skills, agents, and commands. Content is resolved across multiple layers so you can customize or override anything without touching the plugin itself.
 
@@ -187,6 +187,10 @@ Mid-project maintenance for `planning/ROADMAP.md`. Dispatches five surgical oper
 
 `advance` and `complete-phase` are idempotent — re-running on an already-shipped section no-ops instead of double-inserting. All ops abort without touching the file if the result would fail `validateRoadmap`. Refuses to run if `planning/ROADMAP.md` is missing (use `/fsd-new-project` to create it first).
 
+### `/fsd-spec`
+
+Create a new spec artifact under `.fsd/<structure.spec>/<id>.md`. Interviews the user one question at a time for the spec's frontmatter (`id`, `title`, `status`, `approved`, `related`, `tags`) and six body sections — **Problem**, **Goals**, **Non-goals**, **Requirements**, **Acceptance**, **Open questions** — then renders a validated markdown file. Auto-injects `project:` from `planning/PROJECT.md`, so `/fsd-new-project` is a soft prerequisite; if PROJECT.md is missing, the skill offers to chain-invoke `/fsd-new-project` first. Refuses to overwrite an existing spec — editing is handled by a separate `/fsd-spec-update` skill (future). Optional title in `$ARGUMENTS` (e.g. `/fsd-spec artifact metadata schema`) skips the title question.
+
 ### `/fsd:list`
 
 Show all active content resolved across layers with validation status:
@@ -323,6 +327,8 @@ Separate from the `.fsd/` content kinds, FSD persists a pair of files under `pla
 - `planning/ROADMAP.md` — versioned milestones → numbered phases
 
 **Create once, edit many.** `/fsd-new-project` writes both files and refuses to overwrite. `/fsd-roadmap` is the ongoing-edits surface for the roadmap: add milestones, add phases, advance when a milestone ships, mark a phase complete, or bump the version without disturbing user-authored goal paragraphs. Every edit re-validates against the schema; failed edits leave the file on disk unchanged.
+
+Downstream artifact skills read `PROJECT.md` on demand to inject project framing into what they write. `/fsd-spec` auto-injects `project:` from `planning/PROJECT.md` into every new spec, so running `/fsd-new-project` once up front means you never re-type the project name or re-explain the project scope in later sessions. If you invoke `/fsd-spec` before `/fsd-new-project`, the skill detects the missing file and offers to chain-invoke the kickoff first.
 
 When both files are present and their frontmatter validates, the session-start hook prints a one-line header: `Project: <name> — Milestone: <current> (v<version>)`. If either file is absent or invalid, the header is hidden (no noisy errors at session start — use `/fsd:validate` for that).
 

@@ -42,6 +42,37 @@ The authoritative version lives in `plugin/.claude-plugin/plugin.json`. The READ
 
 ---
 
+## [0.8.0] - 2026-04-24
+
+### Added
+
+- **`/fsd-spec` skill** (FSD-006) — create-only authoring skill for spec artifacts under `.fsd/<structure.spec>/<id>.md`. Interviews the user one question at a time for frontmatter (`id`, `title`, `status`, `approved`, `related`, `tags`) and six body sections — **Problem**, **Goals**, **Non-goals**, **Requirements**, **Acceptance**, **Open questions** — then renders a markdown file with validated YAML frontmatter and atomic write. Refuses to overwrite existing specs; editing is deferred to a future `/fsd-spec-update` skill.
+- **PROJECT.md soft-prerequisite with chain-invocation** — the skill's Step 1 reads `planning/PROJECT.md` via `loadProjectContext`. If PROJECT.md is missing, the skill offers to chain-invoke `/fsd-new-project` before resuming the spec interview. If PROJECT.md exists but fails `validateProject`, the skill aborts with the errors printed verbatim (does NOT chain-invoke, since new-project refuses to overwrite). If PROJECT.md is valid but ROADMAP.md is missing, the skill prints a soft warning and proceeds.
+- **`plugin/scripts/spec.js`** — backing module exporting `renderSpec`, `writeSpecFile`, `resolveSpecPath`, `today`, `SECTION_ORDER`, and `SECTION_META`. `renderSpec` emits frontmatter + all six `##` section headings (skipped sections retain their italicized placeholder copy so the structure is always present for later editing). `writeSpecFile` auto-injects `project:` from `planning/PROJECT.md` when the caller omits it, validates via `validateSpec` before touching disk, refuses to overwrite, and writes atomically via tmp-file + rename.
+- **CLI entry point** on `spec.js` — `node scripts/spec.js <projectPath> [--json=<path> | --id=... --title=... ...]` prints a single line of JSON (`{ ok, written?, skipped?, reason? }`) and exits 0 on success, 1 on op failure, 2 on invocation error. The skill's Step 5 delegates via this surface.
+- **Config-aware location** — the backing module honors `getStructure(config).spec` the same way `/fsd:add` and the loader do, so `/fsd-restructure` can rename the spec directory (`spec` → `specifications`, etc.) and `/fsd-spec` follows automatically without code changes.
+- **New test files** — `plugin/tests/test-spec.js` (17 tests: module exports, `renderSpec` with minimal/full/placeholder/skipped-section inputs, `approved`/array omission rules, `resolveSpecPath` default + config override, `writeSpecFile` happy path, refuse-to-overwrite with byte-preserved original content, pre-write validation failure on bad `id` or invalid `related`, missing-required-field refusals, config.structure.spec rename path, PROJECT.md missing/invalid/direct-injection paths, atomicity under injected failure, round-trip through `scanArtifacts`) and `plugin/tests/test-fsd-spec.js` (6 tests: CLI happy path via `--json` payload + via flag-style args, refuse-to-overwrite via CLI, missing-PROJECT.md abort via CLI, usage error on missing projectPath, SKILL.md sanity including `name: fsd-spec` + documented create-only contract + cross-references to `/fsd-new-project` and `/fsd-plan` + coverage of all six body-section names).
+
+### Changed
+
+- **README.md** — Commands section documents `/fsd-spec [title]`; Project Context section adds a paragraph explaining that downstream artifact skills read PROJECT.md on demand to inject project framing, and that `/fsd-spec` offers to chain-invoke `/fsd-new-project` when PROJECT.md is missing.
+
+### Compatibility
+
+Fully backward-compatible. No migration required:
+
+- No schema change — `validateSpec` and the artifact-scanner contract are both unchanged. Existing specs (none in any repo yet, since this release is the first authoring surface for them) continue to validate identically.
+- `loadProjectContext` / `scanArtifacts` / `loadContent` return shapes are unchanged.
+- `/fsd-spec` is additive — no existing skill or command behavior changes.
+
+### Out of scope (intentional, follow-up work)
+
+- Editing existing specs, flipping `approved`, archiving specs, recording `supersedes:` on a new spec while archiving the old one — future `/fsd-spec-update` skill (to be captured as a separate FSD after at least one real spec has been written and edited by hand).
+- Cross-file reference resolution — e.g., checking that a spec's `related: plan/foo` actually points at an existing plan in `.fsd/plan/`. Mirrors the FSD-004/005/007 stance: format-only validation.
+- Multi-spec batch creation.
+
+---
+
 ## [0.7.0] - 2026-04-23
 
 ### Added
