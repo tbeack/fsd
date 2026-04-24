@@ -1,12 +1,18 @@
 # FSD — Full Stack Development Framework
 
-**Version 0.11.0** — released 2026-04-24 · [Changelog](./CHANGELOG.md)
+**Version 0.12.0** — released 2026-04-24 · [Changelog](./CHANGELOG.md)
 
 A multi-layer meta-framework plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with schema-validated skills, agents, and commands. Content is resolved across multiple layers so you can customize or override anything without touching the plugin itself.
 
 ## What It Does
 
-FSD gives Claude Code a structured development workflow through five core skills (brainstorm, plan, execute, verify, debug) and two agents (explorer, reviewer). All content is validated against formal schemas at discovery time, so issues are caught early.
+FSD gives Claude Code a structured development workflow through two layers of skills plus two agents, all schema-validated at discovery time:
+
+- **Core workflow skills** (brainstorm, plan, execute, verify, debug) — the TDD-shaped inner loop.
+- **Authoring skills** (`/fsd-new-project`, `/fsd-roadmap`, `/fsd-spec`, `/fsd-spec-update`, `/fsd-plan`, `/fsd-plan-update`, `/fsd-add-task`, `/fsd-do-task`, `/fsd-restructure`) — project-context and artifact surfaces that persist decisions, specs, plans, and task state under `planning/` and `.fsd/`.
+- **Core agents** (explorer, reviewer) — codebase analysis and review.
+
+Every artifact the authoring skills produce has a formal YAML frontmatter schema; `/fsd:validate` can scan them on demand.
 
 **Multi-layer resolution (highest priority wins):**
 
@@ -75,12 +81,23 @@ Restart Claude Code (or start a new session). You should see:
 FSD Framework Active
 ====================
 
-SKILLS (5 active)
+SKILLS (core workflow)
   brainstorm            core      Ideation and design exploration
   plan                  core      Task breakdown and ordering
   execute               core      TDD implementation
   verify                core      Quality verification
   debug                 core      Systematic debugging
+
+SKILLS (authoring surface)
+  fsd-new-project       core      One-time PROJECT.md + ROADMAP.md kickoff
+  fsd-roadmap           core      Mid-project roadmap maintenance
+  fsd-spec              core      Create spec artifact
+  fsd-spec-update       core      Edit spec artifact (update/approve/archive/supersede)
+  fsd-plan              core      Guided technical plan in native plan mode
+  fsd-plan-update       core      Edit plan artifact (update/archive/supersede)
+  fsd-add-task          core      Append FSD-NNN task to planning/to do/todo.md
+  fsd-do-task           core      Plan or execute a tracked FSD-NNN task
+  fsd-restructure       core      Rename .fsd/ content-kind directories
 
 AGENTS (2 active)
   explorer              core      Codebase analysis
@@ -166,8 +183,15 @@ Creates `.fsd/` with:
 - `skills/` -- project-specific skills
 - `agents/` -- project-specific agents
 - `commands/` -- project-specific commands
+- `spec/`, `plan/`, `research/` -- artifact storage (each pre-seeded with `.gitkeep`)
 
 After `/fsd:init`, run **`/fsd-new-project`** (see below) to capture project identity and the first roadmap entry — every downstream skill reads from those files.
+
+### `/fsd-restructure`
+
+Rename content-kind directories inside `.fsd/` after install, in a single safe operation — either the scannable kinds (`skills`, `agents`, `commands`) or the storage kinds (`spec`, `plan`, `research`). For example, rename `.fsd/skills/` → `.fsd/capabilities/`, or `.fsd/spec/` → `.fsd/specifications/`. Preview-first and confirmation-gated: the skill prints the rename plan, flags stale references in content bodies (without rewriting them — that call is the engineer's), and refuses to run when `.fsd/` has uncommitted changes unless `--force` is passed. Reserved names (`config.yaml`, `.state.yaml`), path separators, leading dots, and aliases (two kinds pointing at the same directory) are hard-refused. Updates `.fsd/config.yaml` `structure:` so the loader, `/fsd:add`, `/fsd:list`, `/fsd:validate`, the session-start hook, and every artifact-producing skill see the new layout on the next session.
+
+Usage: `/fsd-restructure kind=newname [...] [--apply] [--force]`.
 
 ### `/fsd-new-project`
 
@@ -230,6 +254,39 @@ Edit an existing plan artifact. Dispatches three surgical operations that re-val
 | `supersede` | Add `oldId` to the new plan's `supersedes:` array AND archive the old plan. Best-effort atomic: if the second write fails, the first is rolled back from an in-memory backup. |
 
 Refuses to run if the target plan doesn't exist — use `/fsd-plan` to create new plans. Every op bumps frontmatter `updated:` to today. `update remove-related` does NOT special-case the spec-hard-require link — engineer takes responsibility for keeping the plan authorable. Out of scope for v1: `rename-id` (file rename), `unarchive`, mass/batch ops, edit history.
+
+### `/fsd-execute-plan`
+
+Stateful plan executor. Consumes an approved plan artifact, walks its `- [ ] **Phase NN** — <title>` inline checkboxes, runs per-phase verification commands, progressively flips each phase checkbox on pass, walks the Acceptance section the same way, and — after a single final ACK — lands the full close-out pipeline. No auto-commit; the engineer owns the release boundary.
+
+Six-step flow:
+
+1. **Preconditions** — loads PROJECT.md (aborts with a pointer to `/fsd-new-project` if missing; unlike `/fsd-plan`, does NOT chain-invoke). Calls `checkPlanPrecondition` — refuses on missing plan / archived plan / zero Phase NN entries / zero open `- [ ]` acceptance / missing or archived linked spec; surfaces warnings for draft plans and unapproved specs (engineer opts in to proceed).
+2. **Pre-flight summary + yes/no gate** — prints plan title, N phases with titles, resolved verification commands + their source, version target from the plan body (if any), linked spec, linked FSD task, CHANGELOG flag, ARCHITECTURE.md presence. Asks once: `Proceed?`.
+3. **Phase execution loop** — one `TaskCreate` per phase; verification discovery order is phase-body `verify:` backtick hint > plan frontmatter `verification:` > PROJECT.md `verification:` > ask engineer. On any verification failure, STOP — do not flip the phase and do not advance. On pass, flip via `plan-update.js flip-phase --phase-number=NN`. Chat messages starting `adr:` during Step 3 are captured as scratch-list titles for Step 5. After the last phase, re-run the full verification suite as a regression check.
+4. **Acceptance walkthrough** — for each `- [ ]`, produce concrete evidence (test output, file probe), then flip via `plan-update.js flip-ac --line-matcher=<substring>`. Never edit AC text to make it pass. After every AC is `[x]`, insert `All criteria verified YYYY-MM-DD before commit.` above the list.
+5. **Pipeline close-out — single ACK gate** — previews five ops: CHANGELOG entry, version alignment across `plugin/.claude-plugin/plugin.json` + README header + CHANGELOG heading, `planning/to do/todo.md` task flip (if plan `task:` is set), plan `status → archived`, linked spec `approved → true` (only if currently false). Scratch-list ADRs are filled in here (Context / Decision / Consequences) and appended to `planning/ARCHITECTURE.md`. Asks once; on yes, applies each write independently.
+6. **Handoff** — prints the commit-boundary list from the plan body (if present) and reminds the engineer to review with `git diff` and push when ready. Never auto-commits.
+
+Usage: `/fsd-execute-plan [plan-id]`. Omit the argument to have the skill list non-archived plans and ask which one to execute. Cross-reference pair: `/fsd-plan` writes the plan, `/fsd-plan-update` edits it, `/fsd-execute-plan` consumes it.
+
+### `/fsd-add-task`
+
+Capture a new task entry in `planning/to do/todo.md` with auto-incremented `FSD-NNN` numbering. Two modes:
+
+- **Quick-add (default)** — appends a single bullet `` - [ ] `FSD-NNN` — <title> `` to the `## Backlog` list. Optimized for batch capture; no task file is created.
+- **Detail mode** (`--detail`) — walks the user through Source / Summary / Assessment / Plan / Acceptance Criteria questions one at a time, writes `planning/to do/task-fsd-NNN.md`, and links the todo.md entry to the task file.
+
+Usage: `/fsd-add-task [--detail] [brief task title]`. Always reads `todo.md` first to find the highest existing FSD number (never guesses); refuses to add dead links to task files it hasn't created; never implements the task (that's what `/fsd-do-task` is for).
+
+### `/fsd-do-task`
+
+Mode-switching task executor — the natural follow-on to `/fsd-add-task`. Reads `planning/to do/todo.md`, finds the named `FSD-NNN` entry, then branches:
+
+- **Plan mode** — entry exists but no `task-fsd-NNN.md` file yet. Drafts the plan (Source / Summary / Assessment / Plan / Acceptance Criteria), writes the task file, links it from `todo.md`, and stops. No code is written.
+- **Execute mode** — entry + task file both exist. Builds a `TaskCreate` working list, implements the plan's steps, runs the verification suite (`run-tests.sh` + `validate.js` + any task-specific probes), marks each Acceptance Criterion `- [x]` progressively with evidence, writes the CHANGELOG entry the plan specifies (or asks if unspecified), bumps the version across `plugin.json` + README + CHANGELOG when the plan calls for it, and marks the todo.md entry `- [x]`. Stops before committing — the user owns the release step.
+
+Usage: `/fsd-do-task <FSD-NNN | NNN | N>`. Accepts any normalizable form (`4`, `004`, `fsd-4`, `FSD-004`) and canonicalizes to `FSD-004`. Never switches tasks mid-flow, never marks an AC verified without evidence, and never auto-commits.
 
 ### `/fsd:list`
 
@@ -381,7 +438,9 @@ When PROJECT.md and ROADMAP.md are both present and their frontmatter validates,
 
 Required: `project` (non-empty string), `id` (kebab-case), `title` (non-empty), `status` (`draft|active|archived`), `created` (ISO date).
 
-Optional: `updated`, `tags` (kebab-case array), `vision` (string), `target_users` (array of strings).
+Optional: `updated`, `tags` (kebab-case array), `vision` (string), `target_users` (array of strings), `verification` (repo-wide verification command map consumed by `/fsd-execute-plan`).
+
+**`verification:`** is a one-level object with optional string subfields `tests`, `validate`, `typecheck`, `lint`. Unknown subfields parse but surface as validator warnings. Plans may override at the plan level (same field, plan frontmatter); `/fsd-execute-plan`'s discovery order is plan-frontmatter > PROJECT.md > ask engineer.
 
 ```yaml
 ---
@@ -394,6 +453,9 @@ vision: One-line summary of what this project does
 target_users:
   - solo developers
   - small teams
+verification:
+  tests: bash plugin/tests/run-tests.sh
+  validate: node plugin/scripts/validate.js plugin
 ---
 
 # My Project
@@ -534,9 +596,25 @@ related:
 ---
 ```
 
-Plan-only optional fields: `task` (string, often an FSD-NNN reference), `depends_on` (array of plan ids), `estimate` (string), `supersedes` (array of plan ids).
+Plan-only optional fields: `task` (string, often an FSD-NNN reference), `depends_on` (array of plan ids), `estimate` (string), `supersedes` (array of plan ids), `verification` (object — same shape as PROJECT.md's `verification:`; overrides the PROJECT.md-level commands at execute time).
 
 Plans are authored by `/fsd-plan`, which hard-requires a `related: spec/<id>` entry pointing at an existing spec. Archived specs are refused; unapproved specs require explicit engineer opt-in (the validator itself is format-only — the hard-require is enforced at author time).
+
+**Phase checkbox convention (consumed by `/fsd-execute-plan`).** The `## Phases` body section is structured as a list of top-level checkbox entries:
+
+```
+## Phases
+
+- [ ] **Phase 01** — Validator extension
+  - Add helper
+  - Wire it in
+- [ ] **Phase 02** — Skill retrofit
+  - Update SKILL.md
+```
+
+Numbering is two-digit zero-padded; freeform prose between phases is tolerated (only the checkbox lines are parsed via `parsePhases` in `plan-update.js`). `/fsd-execute-plan` flips each `- [ ]` to `- [x]` as that phase's verification passes; the Acceptance section is flipped the same way via a substring matcher against each AC line.
+
+**`adr:` chat prefix (mid-execution ADR capture).** During `/fsd-execute-plan`'s phase loop, the engineer can surface an architecture decision by prefacing a chat message with `adr:` followed by a one-line title. The executor captures the title into an in-memory scratch list and — at the end-of-run ACK gate — prompts for Context / Decision / Consequences per entry before appending them to `planning/ARCHITECTURE.md`'s `## Decisions` section via `architecture.appendDecision`. No mid-phase writes; every ADR is engineer-confirmed before it lands.
 
 **Research example** (`.fsd/research/threat-model.md`):
 
@@ -560,6 +638,8 @@ Run `/fsd:validate --artifacts` to check schema compliance across all artifact d
 
 ## Core Skills
 
+### Core workflow
+
 | Skill | Purpose |
 |-------|---------|
 | **brainstorm** | Explore ideas and requirements before implementation |
@@ -567,6 +647,23 @@ Run `/fsd:validate --artifacts` to check schema compliance across all artifact d
 | **execute** | Implement tasks with TDD and atomic commits |
 | **verify** | Confirm work meets requirements and passes tests |
 | **debug** | Systematic diagnosis with evidence-based reasoning |
+
+### Authoring surface
+
+Long-lived project context and artifacts. Pair-shaped where each pair splits creation from maintenance (`/fsd-new-project` writes + `/fsd-roadmap` maintains; `/fsd-spec` writes + `/fsd-spec-update` maintains; `/fsd-plan` writes + `/fsd-plan-update` maintains). Every writer pre-validates via the matching `validate*` before touching disk; failed writes leave the file byte-unchanged.
+
+| Skill | Purpose |
+|-------|---------|
+| **fsd-new-project** | One-time kickoff — writes `planning/PROJECT.md` + `planning/ROADMAP.md` |
+| **fsd-roadmap** | Roadmap maintenance (`add-milestone` / `add-phase` / `advance` / `complete-phase` / `bump-version`) |
+| **fsd-spec** | Create a new spec artifact (six body sections, auto-injects `project:`) |
+| **fsd-spec-update** | Edit a spec (`update` / `approve` / `archive` / `supersede`) |
+| **fsd-plan** | Guided technical plan in native plan mode; also owns `planning/ARCHITECTURE.md` |
+| **fsd-plan-update** | Edit a plan (`update` / `archive` / `supersede` / `flip-phase` / `flip-ac`) |
+| **fsd-execute-plan** | Drive a plan to completion — phase loop, AC walkthrough, pipeline close-out (CHANGELOG + version bump + plan archive + spec approve + todo.md flip + optional ADRs) |
+| **fsd-add-task** | Capture an `FSD-NNN` task into `planning/to do/todo.md` (quick-add or `--detail`) |
+| **fsd-do-task** | Plan or execute a tracked `FSD-NNN` task end-to-end |
+| **fsd-restructure** | Rename `.fsd/` content-kind directories and update `config.yaml` safely |
 
 ## Core Agents
 
@@ -629,13 +726,27 @@ bash tests/run-tests.sh
 
 ## Roadmap
 
-See `planning/2026-03-02-fsd-framework-design.md` for the full design and evolution roadmap.
+See `planning/2026-03-02-fsd-framework-design.md` for the full design and evolution roadmap, and `CHANGELOG.md` for the shipped history.
 
-- **v0.2** (current) -- Schema validation, strategic config merge, /fsd:validate
-- **v0.3** -- Git-based import/export system for sharing content
-- **v0.4** -- Workflow engine (chaining skills into composable sequences)
-- **v0.5** -- Organization/team config tiers, model profiles
-- **v1.0** -- Parallel execution, session continuity, multi-runtime adapters
+Shipped:
+
+- **v0.2** -- Schema validation, strategic config merge, `/fsd:validate`
+- **v0.3** -- Configurable `.fsd/` structure, `/fsd-restructure`, `/fsd-add-task`
+- **v0.4** -- Storage kinds (`spec/`, `plan/`, `research/`), `SCANNABLE_KINDS` / `STORAGE_KINDS` split
+- **v0.5** -- Artifact metadata schemas, `/fsd:validate --artifacts`
+- **v0.6** -- `planning/PROJECT.md` + `planning/ROADMAP.md`, `/fsd-new-project`, session-start project header
+- **v0.7** -- `/fsd-roadmap` maintenance ops (add-milestone / add-phase / advance / complete-phase / bump-version)
+- **v0.8** -- `/fsd-spec` (create-only spec authoring)
+- **v0.9** -- `/fsd-spec-update` (update / approve / archive / supersede)
+- **v0.10** -- `/fsd-plan` in native plan mode, `planning/ARCHITECTURE.md`, ADR appends
+- **v0.11** (current) -- `/fsd-plan-update` (update / archive / supersede), `validatePlan.supersedes`
+
+Planned:
+
+- Git-based import/export system for sharing content across projects
+- Workflow engine (chaining skills into composable sequences)
+- Organization/team config tiers, model profiles
+- Parallel execution, session continuity, multi-runtime adapters
 
 ## License
 
