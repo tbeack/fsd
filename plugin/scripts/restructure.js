@@ -157,7 +157,7 @@ function previewRestructure({ projectPath, renames }) {
  */
 function rewriteConfigStructure(rawContent, proposedStructure) {
   const structureLines = [];
-  structureLines.push('# Content-kind → directory mapping (managed by /fsd-restructure)');
+  structureLines.push('# Content-kind → directory mapping (managed by /fsd:restructure)');
   structureLines.push('structure:');
   for (const kind of STRUCTURE_KEYS) {
     if (proposedStructure[kind] === DEFAULT_STRUCTURE[kind]) continue;

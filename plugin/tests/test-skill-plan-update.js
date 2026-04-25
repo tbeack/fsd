@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 'use strict';
 
-// Integration tests for the `/fsd-plan-update` skill.
+// Integration tests for the `/fsd:plan-update` skill.
 // - Exercises the scripts/plan-update.js CLI entry point via execFileSync
 //   against a throwaway fixture project with seeded plans, one call per op.
-// - Asserts SKILL.md exists, declares name: fsd-plan-update, documents all
-//   three ops by name, cross-references /fsd-plan, and covers the
+// - Asserts SKILL.md exists, declares name: plan-update, documents all
+//   three ops by name, cross-references /fsd:plan, and covers the
 //   spec-hard-require footgun warning in Guardrails.
 
 const assert = require('assert');
@@ -16,7 +16,7 @@ const { execFileSync } = require('child_process');
 
 const pluginRoot = path.resolve(__dirname, '..');
 const scriptPath = path.join(pluginRoot, 'scripts', 'plan-update.js');
-const skillPath = path.join(pluginRoot, 'skills', 'fsd-plan-update', 'SKILL.md');
+const skillPath = path.join(pluginRoot, 'skills', 'plan-update', 'SKILL.md');
 
 const { writeProjectFiles } = require(path.join(pluginRoot, 'scripts', 'new-project.js'));
 const { writeSpecFile } = require(path.join(pluginRoot, 'scripts', 'spec.js'));
@@ -221,18 +221,18 @@ function runCli(projectPath, op, args) {
 }
 
 // Test 8: SKILL.md sanity — name, all three op names, cross-reference to
-// /fsd-plan, refuse-when-missing documentation, and Guardrails coverage of
+// /fsd:plan, refuse-when-missing documentation, and Guardrails coverage of
 // the spec-hard-require footgun warning.
 {
   assert.ok(fs.existsSync(skillPath), 'fsd-plan-update SKILL.md must exist');
   const content = fs.readFileSync(skillPath, 'utf-8');
 
-  assert.match(content, /^---\s*\nname: fsd-plan-update/m, 'frontmatter must declare name: fsd-plan-update');
+  assert.match(content, /^---\s*\nname: plan-update/m, 'frontmatter must declare name: plan-update');
   assert.match(content, /argument-hint:/i, 'frontmatter must document argument-hint');
   for (const op of ['update', 'archive', 'supersede']) {
     assert.ok(content.includes(op), `SKILL.md must mention op "${op}"`);
   }
-  assert.ok(content.includes('/fsd-plan'), 'SKILL.md must cross-reference /fsd-plan as the creation path');
+  assert.ok(content.includes('/fsd:plan'), 'SKILL.md must cross-reference /fsd:plan as the creation path');
   assert.match(content, /not exist|doesn't exist|not found/i, 'SKILL.md must document refuse-when-missing');
   assert.match(content, /preview|Apply\?/i, 'SKILL.md must mention preview-before-write discipline');
   assert.match(content, /spec-hard-require|hard-require/i, 'Guardrails must flag the spec-hard-require footgun');

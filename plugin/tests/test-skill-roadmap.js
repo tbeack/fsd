@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-// Integration test for the `/fsd-roadmap` skill. The skill delegates all
+// Integration test for the `/fsd:roadmap` skill. The skill delegates all
 // writes to `plugin/scripts/roadmap.js` via its CLI entry point. This test
 // exercises each op through execFileSync against throwaway fixtures — the
 // same command shape the skill's Step 5 uses — and sanity-checks the
@@ -168,12 +168,12 @@ function run(args, expectFail = false) {
 
 // Test 8: SKILL.md file sanity
 {
-  const skillPath = path.join(pluginRoot, 'skills', 'fsd-roadmap', 'SKILL.md');
+  const skillPath = path.join(pluginRoot, 'skills', 'roadmap', 'SKILL.md');
   assert.ok(fs.existsSync(skillPath), 'fsd-roadmap SKILL.md must exist');
   const content = fs.readFileSync(skillPath, 'utf-8');
-  assert.ok(/^---\s*\nname: fsd-roadmap/m.test(content), 'frontmatter must declare name: fsd-roadmap');
+  assert.ok(/^---\s*\nname: roadmap/m.test(content), 'frontmatter must declare name: roadmap');
   // Mentions creation-path partner (for users hitting a missing ROADMAP.md)
-  assert.ok(content.includes('/fsd-new-project'), 'skill must point users at /fsd-new-project for creation');
+  assert.ok(content.includes('/fsd:new-project'), 'skill must point users at /fsd:new-project for creation');
   // Lists all 5 op names
   for (const op of ['add-milestone', 'add-phase', 'advance', 'complete-phase', 'bump-version']) {
     assert.ok(content.includes(op), `skill must document the ${op} op`);

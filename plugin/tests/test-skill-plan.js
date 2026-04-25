@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-// Integration tests for the `/fsd-plan` skill (FSD-008).
+// Integration tests for the `/fsd:plan` skill (FSD-008).
 // - Exercises scripts/plan.js's CLI entry point via execFileSync against a
 //   throwaway fixture project that has a valid PROJECT.md + seeded specs.
 // - Covers: happy-path, missing spec, archived spec, unapproved spec with/
@@ -20,7 +20,7 @@ const { execFileSync } = require('child_process');
 const pluginRoot = path.resolve(__dirname, '..');
 const planScript = path.join(pluginRoot, 'scripts', 'plan.js');
 const archScript = path.join(pluginRoot, 'scripts', 'architecture.js');
-const skillPath = path.join(pluginRoot, 'skills', 'fsd-plan', 'SKILL.md');
+const skillPath = path.join(pluginRoot, 'skills', 'plan', 'SKILL.md');
 
 const { writeProjectFiles } = require(path.join(pluginRoot, 'scripts', 'new-project.js'));
 const { writeSpecFile } = require(path.join(pluginRoot, 'scripts', 'spec.js'));
@@ -211,12 +211,12 @@ function runArchCli(planningDir, opAndArgs) {
 
 // Test 9: SKILL.md file exists with the right frontmatter.
 {
-  assert.ok(fs.existsSync(skillPath), 'SKILL.md must exist at plugin/skills/fsd-plan/SKILL.md');
+  assert.ok(fs.existsSync(skillPath), 'SKILL.md must exist at plugin/skills/fsd:plan/SKILL.md');
   const content = fs.readFileSync(skillPath, 'utf-8');
   const m = content.match(/^---\n([\s\S]*?)\n---/);
   assert.ok(m, 'frontmatter must be present');
   const fm = parseYaml(m[1]);
-  assert.strictEqual(fm.name, 'fsd-plan');
+  assert.strictEqual(fm.name, 'plan');
   assert.ok(fm.description && fm.description.length >= 20);
   assert.match(fm['argument-hint'] || '', /spec-id/);
 }
@@ -239,12 +239,12 @@ function runArchCli(planningDir, opAndArgs) {
   assert.ok(/ExitPlanMode/.test(content), 'must reference ExitPlanMode');
 }
 
-// Test 12: SKILL.md cross-references /fsd-spec and /fsd-execute-plan.
+// Test 12: SKILL.md cross-references /fsd:spec and /fsd:execute-plan.
 {
   const content = fs.readFileSync(skillPath, 'utf-8');
-  assert.ok(/\/fsd-spec/.test(content));
-  assert.ok(/\/fsd-execute-plan/.test(content));
-  assert.ok(/\/fsd-new-project/.test(content));
+  assert.ok(/\/fsd:spec/.test(content));
+  assert.ok(/\/fsd:execute-plan/.test(content));
+  assert.ok(/\/fsd:new-project/.test(content));
 }
 
 // Test 13: SKILL.md documents spec-hard-require and spec-status rules.
@@ -305,7 +305,7 @@ function runArchCli(planningDir, opAndArgs) {
   assert.ok(/verification/i.test(content), 'SKILL.md must mention plan-level verification');
   assert.ok(/override/i.test(content), 'SKILL.md must frame it as a PROJECT.md override');
   assert.ok(/skip/i.test(content), 'SKILL.md must document the skip escape');
-  assert.ok(/\/fsd-execute-plan/.test(content), 'SKILL.md must cross-reference the executor');
+  assert.ok(/\/fsd:execute-plan/.test(content), 'SKILL.md must cross-reference the executor');
 }
 
 // Test 19: renderPlan emits the new phases placeholder verbatim (snapshot).

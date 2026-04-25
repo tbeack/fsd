@@ -1,13 +1,13 @@
 ---
-name: fsd-roadmap
-description: Mid-project ROADMAP.md maintenance. Dispatches five surgical operations — add-milestone, add-phase, advance, complete-phase, bump-version — that edit `planning/ROADMAP.md` in place while preserving user-authored goal prose and re-validating the schema on every write. Use this after `/fsd-new-project` has created the file; refuses to run if ROADMAP.md is missing. Gathers missing args one question at a time. Never edits PROJECT.md; never rewrites your goal paragraphs.
+name: roadmap
+description: Mid-project ROADMAP.md maintenance. Dispatches five surgical operations — add-milestone, add-phase, advance, complete-phase, bump-version — that edit `planning/ROADMAP.md` in place while preserving user-authored goal prose and re-validating the schema on every write. Use this after `/fsd:new-project` has created the file; refuses to run if ROADMAP.md is missing. Gathers missing args one question at a time. Never edits PROJECT.md; never rewrites your goal paragraphs.
 argument-hint: `<add-milestone|add-phase|advance|complete-phase|bump-version> [--key=value ...]`
 ---
 
 # FSD Roadmap Skill
 
 You help the user maintain `planning/ROADMAP.md` after it was created by
-`/fsd-new-project`. The skill dispatches to five subcommands; all writes
+`/fsd:new-project`. The skill dispatches to five subcommands; all writes
 go through `plugin/scripts/roadmap.js`, which validates the result via
 `validateRoadmap` before touching disk.
 
@@ -16,7 +16,7 @@ go through `plugin/scripts/roadmap.js`, which validates the result via
 Default target: `<cwd>/planning/ROADMAP.md`. If the file does not exist,
 stop and tell the user:
 
-> "No `planning/ROADMAP.md` found. Run `/fsd-new-project` to create it
+> "No `planning/ROADMAP.md` found. Run `/fsd:new-project` to create it
 > first — this skill is only for ongoing edits."
 
 Do not proceed. Do not create the file. The creation path is FSD-005's
@@ -108,7 +108,7 @@ stop. They own the release boundary.
 
 - **Never touch `planning/PROJECT.md`.** This skill is scoped to ROADMAP.md only.
 - **Never rewrite user-authored goal prose.** Ops only add structure (headings, status lines) and edit frontmatter. If the user wants to change a goal paragraph, they edit the file directly.
-- **Never create ROADMAP.md.** If it's missing, point the user at `/fsd-new-project`.
+- **Never create ROADMAP.md.** If it's missing, point the user at `/fsd:new-project`.
 - **Always re-validate.** The backing script re-runs `validateRoadmap` before writing; if it rejects the result, the file on disk is unchanged. Surface the reason instead of retrying.
 - **One question at a time.** When gathering args, don't dump a form.
 - **No batch dispatch.** Each invocation is a single op. If the user wants to run three ops, invoke the skill three times.

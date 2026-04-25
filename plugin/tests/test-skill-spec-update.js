@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 'use strict';
 
-// Integration tests for the `/fsd-spec-update` skill.
+// Integration tests for the `/fsd:spec-update` skill.
 // - Exercises the scripts/spec-update.js CLI entry point via execFileSync
 //   against a throwaway fixture project with seeded specs, one call per op.
-// - Asserts SKILL.md exists, declares name: fsd-spec-update, documents all
-//   four ops by name, and cross-references /fsd-spec as the creation path.
+// - Asserts SKILL.md exists, declares name: spec-update, documents all
+//   four ops by name, and cross-references /fsd:spec as the creation path.
 
 const assert = require('assert');
 const fs = require('fs');
@@ -15,7 +15,7 @@ const { execFileSync } = require('child_process');
 
 const pluginRoot = path.resolve(__dirname, '..');
 const scriptPath = path.join(pluginRoot, 'scripts', 'spec-update.js');
-const skillPath = path.join(pluginRoot, 'skills', 'fsd-spec-update', 'SKILL.md');
+const skillPath = path.join(pluginRoot, 'skills', 'spec-update', 'SKILL.md');
 
 const { writeProjectFiles } = require(path.join(pluginRoot, 'scripts', 'new-project.js'));
 const { writeSpecFile, resolveSpecPath } = require(path.join(pluginRoot, 'scripts', 'spec.js'));
@@ -172,16 +172,16 @@ function runCli(projectPath, op, args) {
   }
 }
 
-// Test 7: SKILL.md exists, declares name + all four ops + cross-references /fsd-spec.
+// Test 7: SKILL.md exists, declares name + all four ops + cross-references /fsd:spec.
 {
   assert.ok(fs.existsSync(skillPath), 'fsd-spec-update SKILL.md must exist');
   const content = fs.readFileSync(skillPath, 'utf-8');
 
-  assert.match(content, /^---\s*\nname: fsd-spec-update/m, 'frontmatter must declare name: fsd-spec-update');
+  assert.match(content, /^---\s*\nname: spec-update/m, 'frontmatter must declare name: spec-update');
   for (const op of ['update', 'approve', 'archive', 'supersede']) {
     assert.ok(content.includes(op), `SKILL.md must mention op "${op}"`);
   }
-  assert.ok(content.includes('/fsd-spec'), 'SKILL.md must cross-reference /fsd-spec as the creation path');
+  assert.ok(content.includes('/fsd:spec'), 'SKILL.md must cross-reference /fsd:spec as the creation path');
   // Documents the refusal-when-missing guarantee
   assert.match(content, /not exist|doesn't exist|not found/i);
   // Mentions the preview-before-write discipline

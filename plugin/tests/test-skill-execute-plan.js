@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-// Integration tests for the `/fsd-execute-plan` skill (FSD-009).
+// Integration tests for the `/fsd:execute-plan` skill (FSD-009).
 //
 // The skill is interactive — it drives the engineer through a phase loop,
 // not a single CLI entry. So the tests cover two surfaces:
@@ -20,7 +20,7 @@ const os = require('os');
 const path = require('path');
 
 const pluginRoot = path.resolve(__dirname, '..');
-const skillPath = path.join(pluginRoot, 'skills', 'fsd-execute-plan', 'SKILL.md');
+const skillPath = path.join(pluginRoot, 'skills', 'execute-plan', 'SKILL.md');
 
 const { writeProjectFiles } = require(path.join(pluginRoot, 'scripts', 'new-project.js'));
 const { writeSpecFile } = require(path.join(pluginRoot, 'scripts', 'spec.js'));
@@ -78,12 +78,12 @@ function seedPlan({ fsdDir, planningDir, id, specId = null, status = 'active', p
 
 // Test 1: SKILL.md exists with the expected frontmatter.
 {
-  assert.ok(fs.existsSync(skillPath), 'plugin/skills/fsd-execute-plan/SKILL.md must exist');
+  assert.ok(fs.existsSync(skillPath), 'plugin/skills/fsd:execute-plan/SKILL.md must exist');
   const content = fs.readFileSync(skillPath, 'utf-8');
   const m = content.match(/^---\n([\s\S]*?)\n---/);
   assert.ok(m, 'SKILL.md must have YAML frontmatter');
   const fm = parseYaml(m[1]);
-  assert.strictEqual(fm.name, 'fsd-execute-plan');
+  assert.strictEqual(fm.name, 'execute-plan');
   assert.match(fm['argument-hint'] || '', /plan-id/);
   assert.ok(fm.description && fm.description.length >= 20, 'description must be >= 20 chars');
   // description must name the load-bearing pieces of the skill's contract.
@@ -204,10 +204,10 @@ function seedPlan({ fsdDir, planningDir, id, specId = null, status = 'active', p
 // Test 10: SKILL.md cross-references sibling skills.
 {
   const content = fs.readFileSync(skillPath, 'utf-8');
-  for (const ref of ['/fsd-plan', '/fsd-plan-update', '/fsd-new-project']) {
+  for (const ref of ['/fsd:plan', '/fsd:plan-update', '/fsd:new-project']) {
     assert.ok(content.includes(ref), `SKILL.md must cross-reference ${ref}`);
   }
-  // The ADR append path is on ARCHITECTURE.md authored by /fsd-plan.
+  // The ADR append path is on ARCHITECTURE.md authored by /fsd:plan.
   assert.ok(/ARCHITECTURE\.md/.test(content));
   assert.ok(/spec-update|approve/.test(content), 'spec approve pipeline op must be visible');
 }
@@ -240,7 +240,7 @@ function seedPlan({ fsdDir, planningDir, id, specId = null, status = 'active', p
   const r = checkPlanPrecondition({ fsdDir, planId: 'old' });
   assert.strictEqual(r.ok, false);
   assert.match(r.reason, /archived/);
-  assert.match(r.reason, /\/fsd-plan-update/);
+  assert.match(r.reason, /\/fsd:plan-update/);
 }
 
 // Test 14: plan with zero phase checkboxes → ok: false.

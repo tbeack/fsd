@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 'use strict';
 
-// Integration tests for the `/fsd-spec` skill.
+// Integration tests for the `/fsd:spec` skill.
 // - Exercises scripts/spec.js's CLI entry point via execFileSync against a
 //   throwaway fixture project that has a valid PROJECT.md seeded by
 //   writeProjectFiles (same path the skill uses at runtime).
-// - Asserts SKILL.md exists, declares name: fsd-spec, and documents the
+// - Asserts SKILL.md exists, declares name: spec, and documents the
 //   create-only contract and PROJECT.md precondition behavior.
 
 const assert = require('assert');
@@ -16,7 +16,7 @@ const { execFileSync } = require('child_process');
 
 const pluginRoot = path.resolve(__dirname, '..');
 const scriptPath = path.join(pluginRoot, 'scripts', 'spec.js');
-const skillPath = path.join(pluginRoot, 'skills', 'fsd-spec', 'SKILL.md');
+const skillPath = path.join(pluginRoot, 'skills', 'spec', 'SKILL.md');
 
 const { writeProjectFiles } = require(path.join(pluginRoot, 'scripts', 'new-project.js'));
 const { scanArtifacts } = require(path.join(pluginRoot, 'scripts', 'loader.js'));
@@ -161,23 +161,23 @@ function runCli(projectPath, args) {
   }
 }
 
-// Test 6: SKILL.md exists, declares name: fsd-spec, and documents the contract.
+// Test 6: SKILL.md exists, declares name: spec, and documents the contract.
 {
   assert.ok(fs.existsSync(skillPath), 'fsd-spec SKILL.md must exist');
   const content = fs.readFileSync(skillPath, 'utf-8');
 
-  assert.match(content, /^---\s*\nname: fsd-spec/m, 'frontmatter must declare name: fsd-spec');
+  assert.match(content, /^---\s*\nname: spec/m, 'frontmatter must declare name: spec');
   // PROJECT.md precondition path referenced
   assert.ok(content.includes('PROJECT.md'), 'skill must reference PROJECT.md');
-  assert.ok(content.includes('/fsd-new-project'), 'skill must reference /fsd-new-project chain-invocation');
+  assert.ok(content.includes('/fsd:new-project'), 'skill must reference /fsd:new-project chain-invocation');
   // Refusal / create-only contract documented
   assert.match(content, /refuse.*overwrite|overwrite.*refuse|create-only/i);
   // All six body sections named (spot-check)
   for (const heading of ['Problem', 'Goals', 'Non-goals', 'Requirements', 'Acceptance', 'Open questions']) {
     assert.ok(content.includes(heading), `skill must mention the ${heading} section`);
   }
-  // Forward pointer to /fsd-plan (the downstream consumer)
-  assert.ok(content.includes('/fsd-plan'), 'skill must point forward at /fsd-plan as the downstream consumer');
+  // Forward pointer to /fsd:plan (the downstream consumer)
+  assert.ok(content.includes('/fsd:plan'), 'skill must point forward at /fsd:plan as the downstream consumer');
 }
 
 console.log('  All fsd-spec integration tests passed');

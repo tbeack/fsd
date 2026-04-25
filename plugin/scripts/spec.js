@@ -4,13 +4,13 @@
 /**
  * Spec authoring backing module (FSD-006).
  *
- * Pairs with the `/fsd-spec` skill, which interviews the user and delegates
+ * Pairs with the `/fsd:spec` skill, which interviews the user and delegates
  * the actual write here. This module owns render + validate + atomic write
  * for `.fsd/<structure.spec>/<id>.md` artifacts.
  *
  * Design notes:
  * - Create-only. Hard refuse to overwrite. Editing existing specs is
- *   explicitly out of scope for v1 (future `/fsd-spec-update`).
+ *   explicitly out of scope for v1 (future `/fsd:spec-update`).
  * - Frontmatter is validated via `validateSpec` BEFORE touching disk. On
  *   validation failure, the file on disk is unchanged.
  * - `project:` is auto-injected from `planning/PROJECT.md` when a
@@ -20,7 +20,7 @@
  * - The body always contains all six section headings (Problem, Goals,
  *   Non-goals, Requirements, Acceptance, Open questions). A section the
  *   user skipped keeps its italic placeholder copy so the structure is
- *   present in the file for `/fsd-spec-update` to fill in later.
+ *   present in the file for `/fsd:spec-update` to fill in later.
  */
 
 const fs = require('fs');
@@ -153,7 +153,7 @@ function writeSpecFile({ projectPath, config, planningDir, specData }) {
 
   // Auto-inject project from planning/PROJECT.md when the caller didn't
   // supply it directly. This is the point of the PROJECT.md precondition
-  // the /fsd-spec skill enforces in Step 1.
+  // the /fsd:spec skill enforces in Step 1.
   if (!data.project && planningDir) {
     const ctx = loadProjectContext({ planningDir });
     if (!ctx.project) {
@@ -161,7 +161,7 @@ function writeSpecFile({ projectPath, config, planningDir, specData }) {
         ok: false,
         written: [],
         skipped: [],
-        reason: `PROJECT.md not found under ${planningDir} — run /fsd-new-project first or pass specData.project explicitly`,
+        reason: `PROJECT.md not found under ${planningDir} — run /fsd:new-project first or pass specData.project explicitly`,
       };
     }
     if (!ctx.project.validation.valid) {

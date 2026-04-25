@@ -1,17 +1,17 @@
 ---
-name: fsd-plan-update
-description: Edit an existing plan artifact under `.fsd/<structure.plan>/<id>.md`. Dispatches three subcommands — `update` (surgical title/status/related/tags/depends_on/task/estimate/section rewrite), `archive` (idempotent `status: archived`), and `supersede` (adds `oldId` to new plan's `supersedes:` + archives old plan). Every op re-validates via `validatePlan` before writing and preserves untouched sections byte-for-byte. Refuses to run if the target plan doesn't exist — use `/fsd-plan` to create new plans.
+name: plan-update
+description: Edit an existing plan artifact under `.fsd/<structure.plan>/<id>.md`. Dispatches three subcommands — `update` (surgical title/status/related/tags/depends_on/task/estimate/section rewrite), `archive` (idempotent `status: archived`), and `supersede` (adds `oldId` to new plan's `supersedes:` + archives old plan). Every op re-validates via `validatePlan` before writing and preserves untouched sections byte-for-byte. Refuses to run if the target plan doesn't exist — use `/fsd:plan` to create new plans.
 argument-hint: `<update|archive|supersede> [--key=value ...]`
 ---
 
 # FSD Plan Update Skill
 
-You help the user edit an existing plan artifact. Mirrors `/fsd-spec-update`'s
+You help the user edit an existing plan artifact. Mirrors `/fsd:spec-update`'s
 shape: a small set of surgical operations, one question at a time to gather
 missing args, a preview before writing, atomic write with re-validation.
 
-This is the **edit** counterpart to `/fsd-plan`. If the target plan doesn't
-exist, stop and point the user at `/fsd-plan` — never clobber or create from
+This is the **edit** counterpart to `/fsd:plan`. If the target plan doesn't
+exist, stop and point the user at `/fsd:plan` — never clobber or create from
 this skill.
 
 ## Step 1: Parse the op from `$ARGUMENTS`
@@ -21,9 +21,9 @@ the first token is unrecognized, show the usage block:
 
 ```
 Usage:
-  /fsd-plan-update update <id> [--target=title|status|related|tags|depends_on|task|estimate|section] [...]
-  /fsd-plan-update archive <id>
-  /fsd-plan-update supersede <new-id> --replaces <old-id>
+  /fsd:plan-update update <id> [--target=title|status|related|tags|depends_on|task|estimate|section] [...]
+  /fsd:plan-update archive <id>
+  /fsd:plan-update supersede <new-id> --replaces <old-id>
 ```
 
 Resolve `projectPath` = `<cwd>/.fsd`. Resolve the plan dir from
@@ -34,7 +34,7 @@ Resolve `projectPath` = `<cwd>/.fsd`. Resolve the plan dir from
 Before asking any further questions, check that the target plan file exists
 under `<projectPath>/<structure.plan>/<id>.md`. If it doesn't, refuse with
 the backing module's `plan not found` reason verbatim and point the user at
-`/fsd-plan` as the create surface. Do NOT offer to create the file from
+`/fsd:plan` as the create surface. Do NOT offer to create the file from
 this skill.
 
 ## Step 3: Gather missing args — one question at a time
@@ -148,7 +148,7 @@ or push.
   only `draft` or `active`; archive transitions go through the `archive`
   op (one-way, matches FSD-014 decision).
 - **Section ids:** `context`, `approach`, `phases`, `risks`, `acceptance`,
-  `open_questions` — the same SECTION_ORDER `/fsd-plan` uses.
+  `open_questions` — the same SECTION_ORDER `/fsd:plan` uses.
 - **ISO dates:** `updated:` is set by the backing module to today on every
   write; do not ask the user.
 - **`related` / `tags` / `depends_on` values:** validated against
@@ -161,7 +161,7 @@ or push.
 
 - **Never create a new plan from this skill.** If the target plan doesn't
   exist, the backing module returns `{ ok: false, reason: /plan not found/ }`.
-  Relay the reason and point the user at `/fsd-plan` (create) — do not
+  Relay the reason and point the user at `/fsd:plan` (create) — do not
   silently fall through to creation.
 - **Never modify `planning/PROJECT.md`, `planning/ROADMAP.md`,
   `planning/ARCHITECTURE.md`, or the linked spec.** This skill only
@@ -175,9 +175,9 @@ or push.
 - **Never auto-unarchive or auto-un-supersede.** Strict one-way ops in v1;
   engineer hand-edits the file if they need to reverse.
 - **`update remove-related` does NOT special-case the spec-hard-require
-  link** that `/fsd-plan` enforces at create time. Removing the only
+  link** that `/fsd:plan` enforces at create time. Removing the only
   `spec/<id>` entry from `related:` will leave the plan unauthor-able by
-  `/fsd-plan` — the engineer takes responsibility.
+  `/fsd:plan` — the engineer takes responsibility.
 - **One question at a time.** Don't dump a multi-question form. The
   subcommand choice already narrows what's asked — ask sequentially
   inside it.

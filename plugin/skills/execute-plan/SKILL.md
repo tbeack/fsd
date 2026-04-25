@@ -1,5 +1,5 @@
 ---
-name: fsd-execute-plan
+name: execute-plan
 argument-hint: `[plan-id]`
 description: Stateful plan executor. Consumes an approved plan artifact, walks its `- [ ] **Phase NN**` inline checkboxes, runs per-phase verification commands resolved in the order phase-body-hint → plan frontmatter `verification:` → PROJECT.md `verification:` → ask engineer, progressively flips phase + acceptance checkboxes as each passes, and closes out the full pipeline behind one final ACK — CHANGELOG entry, version alignment across `plugin.json` + README + CHANGELOG, todo.md task flip, plan `status → archived`, linked spec `approved → true` (if still false), optional `ARCHITECTURE.md` ADR appends. No auto-commit; engineer owns the release boundary.
 ---
@@ -8,7 +8,7 @@ description: Stateful plan executor. Consumes an approved plan artifact, walks i
 
 You drive implementation of an approved plan artifact end-to-end. The plan is the contract; your job is to walk its phases, prove each one with verification evidence, mark progress in the plan file itself, and — after a single final ACK — land the close-out pipeline (CHANGELOG, version bump, plan archive, spec approve, todo.md flip, optional ADRs).
 
-This skill pairs with `/fsd-plan` (FSD-008) and `/fsd-plan-update` (FSD-015): `/fsd-plan` writes the plan, `/fsd-plan-update` surgically edits it, and `/fsd-execute-plan` consumes it to completion.
+This skill pairs with `/fsd:plan` (FSD-008) and `/fsd:plan-update` (FSD-015): `/fsd:plan` writes the plan, `/fsd:plan-update` surgically edits it, and `/fsd:execute-plan` consumes it to completion.
 
 **Non-negotiables.** No silent execution. No skipping the pre-flight gate. No flipping a checkbox without evidence. No auto-commits. No edits to make verification pass. See Guardrails at the bottom — all of them are load-bearing.
 
@@ -25,7 +25,7 @@ process.stdout.write(JSON.stringify(ctx));
 '
 ```
 
-- **`ctx.project === null`** → abort: "PROJECT.md not found — run `/fsd-new-project` first, then re-invoke `/fsd-execute-plan`." Do NOT chain-invoke `/fsd-new-project` from here (unlike `/fsd-plan`, the executor does not bootstrap project scaffolding).
+- **`ctx.project === null`** → abort: "PROJECT.md not found — run `/fsd:new-project` first, then re-invoke `/fsd:execute-plan`." Do NOT chain-invoke `/fsd:new-project` from here (unlike `/fsd:plan`, the executor does not bootstrap project scaffolding).
 - **`ctx.project.validation.valid === false`** → abort with errors verbatim; suggest `/fsd:validate`.
 
 ### 1b. Resolve the plan id
@@ -63,10 +63,10 @@ process.stdout.write(JSON.stringify(result));
 ```
 
 - **`ok: false`** → abort. Print `reason` verbatim. Refuse conditions:
-  - Plan file missing → pointer to `/fsd-plan`.
-  - Plan `status: archived` → pointer: "unarchive via `/fsd-plan-update` or pick another plan".
-  - Plan has zero `- [ ] **Phase NN**` entries → pointer to `/fsd-plan-update`.
-  - Plan has zero open `- [ ]` acceptance entries → pointer to `/fsd-plan-update`.
+  - Plan file missing → pointer to `/fsd:plan`.
+  - Plan `status: archived` → pointer: "unarchive via `/fsd:plan-update` or pick another plan".
+  - Plan has zero `- [ ] **Phase NN**` entries → pointer to `/fsd:plan-update`.
+  - Plan has zero open `- [ ]` acceptance entries → pointer to `/fsd:plan-update`.
   - Linked spec missing or archived → pointer to spec-side remediation.
 - **`ok: true` + non-empty `warnings`** → surface each warning and ask: "Proceed anyway? (yes/no)". On no, abort. Typical warnings: plan status is `draft` (executable but uncommon); linked spec `approved: false` (pipeline close-out will flip it on success).
 
@@ -115,7 +115,7 @@ For each phase in order:
    - If the phase body contains a backtick-wrapped shell command preceded by `verify:` (e.g. `verify: \`bash tests/phase-a.sh\``), use that.
    - Otherwise fall back to Step 2a's resolved commands.
    Run them in order; capture output.
-5. **On any failure:** STOP the loop. Print the failing command, the last ~40 lines of output, and the phase number. Do NOT flip the checkbox. Do NOT move to the next phase. The engineer fixes the failure and re-invokes `/fsd-execute-plan <plan-id>` (the skill re-enters at the first open phase).
+5. **On any failure:** STOP the loop. Print the failing command, the last ~40 lines of output, and the phase number. Do NOT flip the checkbox. Do NOT move to the next phase. The engineer fixes the failure and re-invokes `/fsd:execute-plan <plan-id>` (the skill re-enters at the first open phase).
 6. **On all pass:** flip the phase checkbox via the plan-update CLI:
 
    ```bash
@@ -225,7 +225,7 @@ Run only read-only `git status` / `git diff` if you want to sanity-check the wor
 - **AC flip matcher** — a short, unambiguous substring from the AC text. `flipAcceptance` substring-matches in `## Acceptance` only.
 - **Verification discovery order** — phase-body `verify:` hint > plan frontmatter `verification:` > PROJECT.md `verification:` > ask engineer.
 - **ADR capture prefix** — chat messages starting `adr:` during Step 3 are captured as scratch-list titles; full Context/Decision/Consequences are gathered at Step 5.
-- **No chain-invoke of `/fsd-new-project`** — unlike `/fsd-plan`, the executor aborts when PROJECT.md is missing.
+- **No chain-invoke of `/fsd:new-project`** — unlike `/fsd:plan`, the executor aborts when PROJECT.md is missing.
 
 ## Guardrails (non-negotiable)
 

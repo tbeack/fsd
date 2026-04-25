@@ -1,5 +1,5 @@
 ---
-name: fsd-restructure
+name: restructure
 description: Rename content-kind directories inside the project's `.fsd/` space (scannable kinds skills/agents/commands, or storage kinds spec/plan/research) and update `config.yaml` so the loader, add, list, validate, session-start hook, and artifact-producing skills all see the new layout. Use when the user wants to reshape their FSD project directory structure after install — e.g. rename `skills/` to `capabilities/` or `spec/` to `specifications/`. Preview-first, confirmation-gated, flags stale references in content but does NOT auto-rewrite them.
 argument-hint: `[kind=newname ...]  [--apply]  [--force]`
 ---
@@ -84,7 +84,7 @@ If any content appears to have been lost (was there before, missing after), stop
 
 ### User wants to rename `skills` → `capabilities`
 ```
-User: /fsd-restructure skills=capabilities
+User: /fsd:restructure skills=capabilities
 You: [run git status check → clean]
 You: [run preview script]
 You: "Current structure:
@@ -103,7 +103,7 @@ You: [relay /fsd:list output]
 
 ### User wants to rename multiple kinds
 ```
-User: /fsd-restructure skills=capabilities agents=bots
+User: /fsd:restructure skills=capabilities agents=bots
 ```
 Pass both pairs in a single `restructure.js` invocation.
 

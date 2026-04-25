@@ -11,7 +11,7 @@ const DEFAULT_STRUCTURE = Object.freeze({
   skills: 'skills',
   agents: 'agents',
   commands: 'commands',
-  // Storage kinds (artifacts produced by fsd-spec / fsd-plan / fsd-research)
+  // Storage kinds (artifacts produced by spec / plan / research)
   spec: 'spec',
   plan: 'plan',
   research: 'research',

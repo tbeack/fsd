@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-// Integration test for the `/fsd-new-project` skill. The skill's Step 4
+// Integration test for the `/fsd:new-project` skill. The skill's Step 4
 // delegates the actual write to `plugin/scripts/new-project.js` via a `node
 // -e` invocation. This test exercises the same contract: runs the backing
 // script as a child process against a throwaway fixture dir, then confirms
@@ -115,10 +115,10 @@ function runBacking({ planningDir, projectData, roadmapData }) {
 
 // Test 3: Skill file exists and advertises a valid schema-compliant frontmatter
 {
-  const skillPath = path.join(pluginRoot, 'skills', 'fsd-new-project', 'SKILL.md');
+  const skillPath = path.join(pluginRoot, 'skills', 'new-project', 'SKILL.md');
   assert.ok(fs.existsSync(skillPath), 'fsd-new-project SKILL.md must exist');
   const content = fs.readFileSync(skillPath, 'utf-8');
-  assert.ok(/^---\s*\nname: fsd-new-project/m.test(content), 'frontmatter must declare name: fsd-new-project');
+  assert.ok(/^---\s*\nname: new-project/m.test(content), 'frontmatter must declare name: new-project');
   assert.ok(content.includes('planning/PROJECT.md'));
   assert.ok(content.includes('planning/ROADMAP.md'));
   // Must call out the refuse-to-overwrite guarantee
@@ -129,14 +129,14 @@ function runBacking({ planningDir, projectData, roadmapData }) {
 
 // Test 4: SKILL.md documents the optional verification prompt with subfields.
 {
-  const skillPath = path.join(pluginRoot, 'skills', 'fsd-new-project', 'SKILL.md');
+  const skillPath = path.join(pluginRoot, 'skills', 'new-project', 'SKILL.md');
   const content = fs.readFileSync(skillPath, 'utf-8');
   // Prompt prose + subfield names + skip escape.
   assert.ok(/verification/i.test(content), 'SKILL.md must mention the verification prompt');
   assert.ok(/tests/.test(content) && /validate/.test(content));
   assert.ok(/typecheck/.test(content) && /lint/.test(content));
   assert.ok(/skip/i.test(content), 'SKILL.md must document the skip escape');
-  assert.ok(/\/fsd-execute-plan/.test(content), 'SKILL.md must cross-reference the executor');
+  assert.ok(/\/fsd:execute-plan/.test(content), 'SKILL.md must cross-reference the executor');
 }
 
 // Test 5: End-to-end — engineer-supplied verification lands in PROJECT.md and round-trips.

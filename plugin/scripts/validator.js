@@ -423,10 +423,10 @@ const SCANNABLE_KINDS = ['skills', 'agents', 'commands'];
 
 // Storage kinds: directories that hold artifacts produced by skills (specs,
 // plans, research notes). The loader does NOT scan these; authoring is owned
-// by the corresponding fsd-spec / fsd-plan / fsd-research skills.
+// by the corresponding spec / plan / research skills.
 const STORAGE_KINDS = ['spec', 'plan', 'research'];
 
-// All known kinds. Accepted by `structure:` config; used by /fsd-restructure.
+// All known kinds. Accepted by `structure:` config; used by /fsd:restructure.
 const STRUCTURE_KEYS = [...SCANNABLE_KINDS, ...STORAGE_KINDS];
 
 /**

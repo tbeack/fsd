@@ -1,5 +1,5 @@
 ---
-name: fsd-do-task
+name: do-task
 description: Execute or plan an FSD task by identifier. Reads `planning/to do/todo.md`, finds the entry, and either drafts the missing `task-fsd-NNN.md` plan or executes the existing one (verify ACs, mark complete in both the task file and todo.md). Use when the user says "do FSD-004", "execute FSD-031", "work on task FSD-007", or similar — anything that names an FSD-NNN identifier and asks to make progress.
 argument-hint: `<FSD-NNN | NNN | N>`
 ---
@@ -17,7 +17,7 @@ You help the user make progress on a single FSD task identified by its
   calls for, mark the entry complete in `todo.md`. Stop before
   committing — let the user trigger commits separately.
 
-The skill is the natural follow-on to `fsd-add-task` (which captures
+The skill is the natural follow-on to `add-task` (which captures
 the entry) and pairs with the existing `execute` skill (which provides
 the TDD discipline this skill borrows from in execute mode).
 
@@ -44,7 +44,7 @@ Read `planning/to do/todo.md`. Find the line containing the canonical
 `FSD-NNN` identifier under the `## Backlog` list.
 
 - **Not found** — Tell the user the task isn't in the tracker and
-  suggest `/fsd-add-task` to create it first. Stop.
+  suggest `/fsd:add-task` to create it first. Stop.
 - **Already checked (`- [x]`)** — Tell the user it's marked complete.
   Ask whether to re-execute (rare; usually a mistake). Default: stop.
 - **Open (`- [ ]`)** — Continue.
@@ -64,7 +64,7 @@ mode" or "Task file found — entering execute mode."
 
 ## Step 4: Plan mode — draft the workup
 
-Mirror the detail-mode flow of `fsd-add-task`. Ask these questions
+Mirror the detail-mode flow of `add-task`. Ask these questions
 **one at a time** (not all at once):
 
 1. **Source** — Where did this task come from? (skip if not applicable)
@@ -118,7 +118,7 @@ identifier, parenthesized link).
 
 **Stop here.** Tell the user the plan is ready at
 `planning/to do/task-fsd-NNN.md` and that they can re-invoke
-`/fsd-do-task FSD-NNN` to execute it. Do **not** start implementing.
+`/fsd:do-task FSD-NNN` to execute it. Do **not** start implementing.
 
 ## Step 5: Execute mode — implement the plan
 

@@ -338,7 +338,7 @@ function seedProjectMd(planningDir, projectName = 'Demo Project') {
   });
   assert.strictEqual(result.ok, false);
   assert.match(result.reason, /PROJECT\.md not found/i);
-  assert.match(result.reason, /fsd-new-project/);
+  assert.match(result.reason, /fsd:new-project/);
   // No file written
   assert.strictEqual(fs.existsSync(path.join(projectPath, 'spec')), false);
 

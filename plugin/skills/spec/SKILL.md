@@ -1,19 +1,19 @@
 ---
-name: fsd-spec
-description: Create a new spec artifact under `.fsd/<structure.spec>/<id>.md`. Interviews the user one question at a time for frontmatter (id, title, status, approved, related, tags) and six body sections (Problem, Goals, Non-goals, Requirements, Acceptance, Open questions). Auto-injects `project:` from `planning/PROJECT.md`. Refuses to overwrite. When PROJECT.md is missing, offers to chain-invoke `/fsd-new-project`. Create-only — editing existing specs is handled by a separate `/fsd-spec-update` skill (future).
+name: spec
+description: Create a new spec artifact under `.fsd/<structure.spec>/<id>.md`. Interviews the user one question at a time for frontmatter (id, title, status, approved, related, tags) and six body sections (Problem, Goals, Non-goals, Requirements, Acceptance, Open questions). Auto-injects `project:` from `planning/PROJECT.md`. Refuses to overwrite. When PROJECT.md is missing, offers to chain-invoke `/fsd:new-project`. Create-only — editing existing specs is handled by a separate `/fsd:spec-update` skill (future).
 argument-hint: `[spec title]`
 ---
 
 # FSD Spec Skill
 
 You help the user create a new spec artifact — the "what/why" contract that
-`/fsd-plan` (FSD-008, planned) reads to derive implementation work. Specs
+`/fsd:plan` (FSD-008, planned) reads to derive implementation work. Specs
 live under `<projectPath>/<structure.spec>/<id>.md` and have validated YAML
 frontmatter plus six `##` body sections.
 
 This is a **create-only** skill. If a spec with the chosen id already exists,
 stop and tell the user to edit it directly (or, once it lands,
-`/fsd-spec-update`). Never clobber an authored file.
+`/fsd:spec-update`). Never clobber an authored file.
 
 ## Step 1: Precondition — PROJECT.md must exist and validate
 
@@ -32,18 +32,18 @@ process.stdout.write(JSON.stringify(ctx));
 Interpret the result:
 
 - **`ctx.project === null`** → `PROJECT.md` is missing. Ask the user:
-  > "PROJECT.md not found — run `/fsd-new-project` first? (yes/no)"
-  On **yes**, invoke `/fsd-new-project` via the Skill tool and resume this
+  > "PROJECT.md not found — run `/fsd:new-project` first? (yes/no)"
+  On **yes**, invoke `/fsd:new-project` via the Skill tool and resume this
   skill after it returns (re-read `ctx` to confirm). On **no**, abort with
   a one-line message: "PROJECT.md is required for spec authoring — aborting."
 - **`ctx.project.validation.valid === false`** → `PROJECT.md` exists but
   the frontmatter fails validation. Print `ctx.project.validation.errors`
   verbatim, suggest `/fsd:validate` or a manual fix, and abort. Do NOT
-  chain-invoke `/fsd-new-project` — it refuses to overwrite an existing
+  chain-invoke `/fsd:new-project` — it refuses to overwrite an existing
   PROJECT.md and would just fail.
 - **`ctx.project` valid, `ctx.roadmap === null`** → soft warning:
-  "ROADMAP.md missing — spec can still be written, but `/fsd-roadmap`
-  or `/fsd-new-project` later would unlock session-start context." Proceed.
+  "ROADMAP.md missing — spec can still be written, but `/fsd:roadmap`
+  or `/fsd:new-project` later would unlock session-start context." Proceed.
 - **Both present and valid** → continue to Step 2.
 
 ## Step 2: Gather frontmatter — one question at a time
@@ -153,7 +153,7 @@ On success:
 - Print the written path (from `result.written[0]`).
 - "Run `/fsd:validate --artifacts` to confirm the new spec is picked up
   by the scanner."
-- "When `/fsd-plan` lands (FSD-008), it will read this spec's
+- "When `/fsd:plan` lands (FSD-008), it will read this spec's
   Requirements and Acceptance sections automatically."
 
 ## Conventions to match
@@ -164,7 +164,7 @@ On success:
   automatic unless a future refactor breaks it.
 - **Status values:** `draft`/`active`/`archived`. Default `draft` for a
   newly-authored spec — the user will flip it to `active` once the
-  requirements are stable (future `/fsd-spec-update` territory).
+  requirements are stable (future `/fsd:spec-update` territory).
 - **ISO dates:** `YYYY-MM-DD`. `created:` is set by the backing module;
   do not ask the user.
 - **Related refs:** always the shape `<spec|plan|research>/<kebab-id>`.
@@ -174,7 +174,7 @@ On success:
 
 - **Never overwrite an existing spec.** The backing module refuses; the
   skill must honor that. If the target file exists, stop and suggest
-  editing it directly or waiting for `/fsd-spec-update`.
+  editing it directly or waiting for `/fsd:spec-update`.
 - **Never ask about `project:`.** Always auto-inject from PROJECT.md. If
   PROJECT.md is missing → Step 1's precondition path. If invalid → abort.
 - **One question at a time** in both the frontmatter and body interviews.
@@ -187,4 +187,4 @@ On success:
   backing module resolves this; do not second-guess by passing explicit
   paths.
 - **Do not start writing plans or research in the same invocation.** This
-  skill captures the "what/why"; `/fsd-plan` (future) handles the "how".
+  skill captures the "what/why"; `/fsd:plan` (future) handles the "how".

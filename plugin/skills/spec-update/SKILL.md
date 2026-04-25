@@ -1,17 +1,17 @@
 ---
-name: fsd-spec-update
-description: Edit an existing spec artifact under `.fsd/<structure.spec>/<id>.md`. Dispatches four subcommands — `update` (surgical title/status/related/tags/section rewrite), `approve` (idempotent `approved: true`), `archive` (idempotent `status: archived`), and `supersede` (adds `oldId` to new spec's `supersedes:` + archives old spec). Every op re-validates via `validateSpec` before writing and preserves untouched sections byte-for-byte. Refuses to run if the target spec doesn't exist — use `/fsd-spec` to create new specs.
+name: spec-update
+description: Edit an existing spec artifact under `.fsd/<structure.spec>/<id>.md`. Dispatches four subcommands — `update` (surgical title/status/related/tags/section rewrite), `approve` (idempotent `approved: true`), `archive` (idempotent `status: archived`), and `supersede` (adds `oldId` to new spec's `supersedes:` + archives old spec). Every op re-validates via `validateSpec` before writing and preserves untouched sections byte-for-byte. Refuses to run if the target spec doesn't exist — use `/fsd:spec` to create new specs.
 argument-hint: `<update|approve|archive|supersede> [--key=value ...]`
 ---
 
 # FSD Spec Update Skill
 
-You help the user edit an existing spec artifact. Mirrors `/fsd-roadmap`'s
+You help the user edit an existing spec artifact. Mirrors `/fsd:roadmap`'s
 shape: a small set of surgical operations, one question at a time to gather
 missing args, a preview before writing, atomic write with re-validation.
 
-This is the **edit** counterpart to `/fsd-spec`. If the target spec doesn't
-exist, stop and point the user at `/fsd-spec` — never clobber or create from
+This is the **edit** counterpart to `/fsd:spec`. If the target spec doesn't
+exist, stop and point the user at `/fsd:spec` — never clobber or create from
 this skill.
 
 ## Step 1: Parse the op from `$ARGUMENTS`
@@ -21,10 +21,10 @@ empty or the first token is unrecognized, show the usage block:
 
 ```
 Usage:
-  /fsd-spec-update update <id> [--target=title|status|related|tags|section] [...]
-  /fsd-spec-update approve <id>
-  /fsd-spec-update archive <id>
-  /fsd-spec-update supersede <new-id> --replaces <old-id>
+  /fsd:spec-update update <id> [--target=title|status|related|tags|section] [...]
+  /fsd:spec-update approve <id>
+  /fsd:spec-update archive <id>
+  /fsd:spec-update supersede <new-id> --replaces <old-id>
 ```
 
 Resolve `projectPath` = `<cwd>/.fsd`. Resolve the spec dir from
@@ -133,7 +133,7 @@ On `{ ok: false, reason }`:
   only `draft` or `active`; archive transitions go through the `archive`
   op (one-way, matches FSD-014 decision).
 - **Section ids:** `problem`, `goals`, `non_goals`, `requirements`,
-  `acceptance`, `open_questions` — the same SECTION_ORDER `/fsd-spec` uses.
+  `acceptance`, `open_questions` — the same SECTION_ORDER `/fsd:spec` uses.
 - **ISO dates:** `updated:` is set by the backing module to today on every
   write; do not ask the user.
 - **`related` / `tags` values:** always validated against `CROSS_REF` /
@@ -143,7 +143,7 @@ On `{ ok: false, reason }`:
 
 - **Never create a new spec from this skill.** If the target spec doesn't
   exist, the backing module returns `{ ok: false, reason: /spec not found/ }`.
-  Relay the reason and point the user at `/fsd-spec` (create) — do not
+  Relay the reason and point the user at `/fsd:spec` (create) — do not
   silently fall through to creation.
 - **Never modify `planning/PROJECT.md` or `planning/ROADMAP.md`.** This
   skill only touches files under `<projectPath>/<structure.spec>/`.

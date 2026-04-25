@@ -29,9 +29,9 @@ Current version: `plugin/.claude-plugin/plugin.json` and the `**Version X.Y.Z**`
 ├── planning/                   # Project planning artifacts
 │   ├── to do/todo.md           # FSD-### task tracker
 │   ├── to do/task-fsd-NNN.md   # Per-task detail files
-│   ├── PROJECT.md              # Scaffolded by /fsd-new-project
-│   ├── ROADMAP.md              # Scaffolded by /fsd-new-project
-│   └── ARCHITECTURE.md         # ADR log (appended via /fsd-execute-plan)
+│   ├── PROJECT.md              # Scaffolded by /fsd:new-project
+│   ├── ROADMAP.md              # Scaffolded by /fsd:new-project
+│   └── ARCHITECTURE.md         # ADR log (appended via /fsd:execute-plan)
 ├── .fsd/                       # Runtime artifacts (spec/, plan/, research/)
 ├── CHANGELOG.md                # Keep-a-Changelog format
 ├── README.md                   # Version header: **Version X.Y.Z**
@@ -79,7 +79,7 @@ Skills live in `plugin/skills/<name>/SKILL.md` with YAML frontmatter:
 
 ```yaml
 ---
-name: fsd-plan
+name: plan
 argument-hint: `[spec-id]`
 description: >-
   20+ char description...

@@ -50,7 +50,7 @@ function bodySection(title, content) {
  * @param {string[]} [data.target_users] - Array of target user descriptors
  * @param {Object} [data.verification]   - Optional repo-wide verification command map
  *                                         `{ tests?, validate?, typecheck?, lint? }`
- *                                         consumed by `/fsd-execute-plan` after each
+ *                                         consumed by `/fsd:execute-plan` after each
  *                                         plan phase. Omit or leave empty to skip.
  * @param {Object} [data.sections]     - Markdown body content keyed by section
  * @returns {string}

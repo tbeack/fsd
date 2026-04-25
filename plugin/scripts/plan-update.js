@@ -5,8 +5,8 @@
  * Plan update operations (FSD-015).
  *
  * Pairs with `plugin/scripts/plan.js` (which creates plan artifacts once via
- * /fsd-plan, refusing to overwrite) by supplying the ongoing-edits surface
- * the /fsd-plan-update skill dispatches to. Mirrors `spec-update.js`'s
+ * /fsd:plan, refusing to overwrite) by supplying the ongoing-edits surface
+ * the /fsd:plan-update skill dispatches to. Mirrors `spec-update.js`'s
  * design — surgical edits, byte-preservation of user prose in untouched
  * regions, re-validation before every write, idempotent no-ops for
  * already-applied edits, atomic tmp-file + rename.

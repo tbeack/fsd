@@ -4,7 +4,7 @@
 /**
  * Plan authoring backing module (FSD-008).
  *
- * Pairs with the `/fsd-plan` skill, which runs a guided technical-planning
+ * Pairs with the `/fsd:plan` skill, which runs a guided technical-planning
  * session inside Claude Code's native plan mode and delegates the final
  * write here. This module owns render + validate + atomic write for
  * `.fsd/<structure.plan>/<id>.md` plan artifacts.
@@ -12,7 +12,7 @@
  * Design notes:
  * - Create-only. Refuses to overwrite. Editing existing plans (status flips,
  *   phase appends, depends_on edits) is explicitly out of scope for v1; a
- *   future `/fsd-plan-update` skill will own it (mirrors the FSD-006 →
+ *   future `/fsd:plan-update` skill will own it (mirrors the FSD-006 →
  *   FSD-014 spec pattern).
  * - Hard-requires a spec linkage: `planData.related` must contain at least
  *   one `spec/<id>` entry pointing at a real file in
@@ -24,7 +24,7 @@
  *   `planningDir` is passed and `planData.project` is absent.
  * - Body always carries all six section headings (Context, Approach,
  *   Phases, Risks, Acceptance, Open questions). Skipped sections keep their
- *   italic placeholder so a future `/fsd-plan-update` can fill them in.
+ *   italic placeholder so a future `/fsd:plan-update` can fill them in.
  * - Atomic write: tmp file + rename.
  */
 
@@ -174,7 +174,7 @@ function checkSpecPrecondition({ fsdDir, config, specId }) {
   if (!fs.existsSync(specPath)) {
     return {
       ok: false,
-      reason: `linked spec not found at ${specPath} — create it with /fsd-spec first`,
+      reason: `linked spec not found at ${specPath} — create it with /fsd:spec first`,
     };
   }
 
@@ -204,7 +204,7 @@ function checkSpecPrecondition({ fsdDir, config, specId }) {
 // ---- plan precondition --------------------------------------------------
 
 /**
- * Verify the state of a target plan before `/fsd-execute-plan` begins. Mirror
+ * Verify the state of a target plan before `/fsd:execute-plan` begins. Mirror
  * of `checkSpecPrecondition` but for plans. Returns on first hard failure;
  * aggregates soft warnings. Lazy-requires plan-update.js to avoid a circular
  * module load.
@@ -239,7 +239,7 @@ function checkPlanPrecondition({ fsdDir, config, planId }) {
   if (!fs.existsSync(planPath)) {
     return {
       ok: false,
-      reason: `plan not found at ${planPath} — create it with /fsd-plan first`,
+      reason: `plan not found at ${planPath} — create it with /fsd:plan first`,
       warnings: [],
     };
   }
@@ -259,7 +259,7 @@ function checkPlanPrecondition({ fsdDir, config, planId }) {
   if (meta.status === 'archived') {
     return {
       ok: false,
-      reason: `plan "${planId}" is archived — unarchive via /fsd-plan-update or pick another plan`,
+      reason: `plan "${planId}" is archived — unarchive via /fsd:plan-update or pick another plan`,
       warnings: [],
     };
   }
@@ -268,7 +268,7 @@ function checkPlanPrecondition({ fsdDir, config, planId }) {
   if (phases.length === 0) {
     return {
       ok: false,
-      reason: `plan "${planId}" has no \`- [ ] **Phase NN**\` entries in ## Phases — finish authoring via /fsd-plan-update`,
+      reason: `plan "${planId}" has no \`- [ ] **Phase NN**\` entries in ## Phases — finish authoring via /fsd:plan-update`,
       warnings: [],
     };
   }
@@ -282,7 +282,7 @@ function checkPlanPrecondition({ fsdDir, config, planId }) {
   if (!hasOpenAc) {
     return {
       ok: false,
-      reason: `plan "${planId}" has no open \`- [ ]\` acceptance entries — finish authoring via /fsd-plan-update`,
+      reason: `plan "${planId}" has no open \`- [ ]\` acceptance entries — finish authoring via /fsd:plan-update`,
       warnings: [],
     };
   }
@@ -294,7 +294,7 @@ function checkPlanPrecondition({ fsdDir, config, planId }) {
   if (!specLink) {
     return {
       ok: false,
-      reason: `plan "${planId}" is missing its linked spec (no \`spec/<id>\` in related) — edit via /fsd-plan-update`,
+      reason: `plan "${planId}" is missing its linked spec (no \`spec/<id>\` in related) — edit via /fsd:plan-update`,
       warnings: [],
     };
   }
@@ -363,7 +363,7 @@ function writePlanFile({ projectPath, config, planningDir, planData, acknowledge
         ok: false,
         written: [],
         skipped: [],
-        reason: `PROJECT.md not found under ${planningDir} — run /fsd-new-project first or pass planData.project explicitly`,
+        reason: `PROJECT.md not found under ${planningDir} — run /fsd:new-project first or pass planData.project explicitly`,
       };
     }
     if (!ctx.project.validation.valid) {
@@ -391,7 +391,7 @@ function writePlanFile({ projectPath, config, planningDir, planData, acknowledge
       ok: false,
       written: [],
       skipped: [],
-      reason: 'plan must link to a spec via `related: spec/<id>` — /fsd-plan hard-requires a spec linkage',
+      reason: 'plan must link to a spec via `related: spec/<id>` — /fsd:plan hard-requires a spec linkage',
     };
   }
 

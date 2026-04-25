@@ -5,8 +5,8 @@
  * Spec update operations (FSD-014).
  *
  * Pairs with `plugin/scripts/spec.js` (which creates spec artifacts once via
- * /fsd-spec, refusing to overwrite) by supplying the ongoing-edits surface
- * the /fsd-spec-update skill dispatches to. Mirrors `roadmap.js`'s design —
+ * /fsd:spec, refusing to overwrite) by supplying the ongoing-edits surface
+ * the /fsd:spec-update skill dispatches to. Mirrors `roadmap.js`'s design —
  * surgical edits, byte-preservation of user prose in untouched regions,
  * re-validation before every write, idempotent no-ops for already-applied
  * edits, atomic tmp-file + rename.

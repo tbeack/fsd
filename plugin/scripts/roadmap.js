@@ -5,8 +5,8 @@
  * ROADMAP.md maintenance operations (FSD-007).
  *
  * Pairs with `plugin/scripts/new-project.js` (which creates the file once via
- * /fsd-new-project, refusing to overwrite) by supplying the ongoing-edits
- * surface the /fsd-roadmap skill dispatches to.
+ * /fsd:new-project, refusing to overwrite) by supplying the ongoing-edits
+ * surface the /fsd:roadmap skill dispatches to.
  *
  * Design notes:
  * - Edits are surgical. The parser records line-range pairs for frontmatter
@@ -342,7 +342,7 @@ function advance({ roadmapPath }) {
   const current = parsed.milestones[idx];
   const next = parsed.milestones[idx + 1];
   if (!next) {
-    return { ok: false, reason: `advance: no next milestone after "${currentId}" — add one first with /fsd-roadmap add-milestone` };
+    return { ok: false, reason: `advance: no next milestone after "${currentId}" — add one first with /fsd:roadmap add-milestone` };
   }
 
   if (current.shippedStatusLine !== null) {

@@ -42,6 +42,18 @@ The authoritative version lives in `plugin/.claude-plugin/plugin.json`. The READ
 
 ---
 
+## [0.14.0] - 2026-04-25
+
+### Changed
+
+- **Skill rename — drop `fsd-` prefix** (FSD-018) — All 11 FSD-specific skills renamed to remove the redundant `fsd-` prefix, resolving the double-prefix convention (`fsd:fsd-plan` → `fsd:plan`). Rename map: `fsd-new-project` → `new-project`, `fsd-roadmap` → `roadmap`, `fsd-spec` → `spec`, `fsd-spec-update` → `spec-update`, `fsd-plan` → `plan`, `fsd-plan-update` → `plan-update`, `fsd-execute-plan` → `execute-plan`, `fsd-restructure` → `restructure`, `fsd-help` → `help`, `fsd-add-task` → `add-task`, `fsd-do-task` → `do-task`. The generic `plan` skill that previously occupied the `plan/` directory slot was renamed to `workflow-plan` to free up the name. All cross-references in SKILL.md bodies updated from `/fsd-X` → `/fsd:X` convention. Backing scripts (`plan.js`, `spec.js`, `plan-update.js`, `spec-update.js`, `roadmap.js`, `new-project.js`, `architecture.js`, `config.js`, `init.js`, `restructure.js`, `validator.js`) updated: error-message skill pointers use the new `/fsd:X` form, comment references updated. 8 test files renamed from `test-fsd-*.js` → `test-skill-*.js` to avoid naming collision with existing script-level test files; all internal path and name assertions updated to match the new skill directory names and frontmatter `name:` values. README and CLAUDE.md skill references updated.
+
+### Compatibility
+
+**Breaking change (skill names).** Any saved slash-command shortcut referencing `/fsd:fsd-plan`, `/fsd:fsd-spec`, etc. must be updated to the new names. No `.fsd/` artifact schema changes; no config.yaml changes; no script API changes. All existing plan, spec, and research artifacts are unaffected.
+
+---
+
 ## [0.13.0] - 2026-04-25
 
 ### Added

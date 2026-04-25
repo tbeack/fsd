@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-// Structural tests for the /fsd-help skill (FSD-016).
+// Structural tests for the /fsd:help skill (FSD-016).
 //
 // There is no backing script — the SKILL.md IS the deliverable.
 // Tests assert that the file is present, has valid frontmatter, and
@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 
 const pluginRoot = path.resolve(__dirname, '..');
-const skillPath = path.join(pluginRoot, 'skills', 'fsd-help', 'SKILL.md');
+const skillPath = path.join(pluginRoot, 'skills', 'help', 'SKILL.md');
 
 const { parseYaml } = require(path.join(pluginRoot, 'scripts', 'yaml-parser.js'));
 
@@ -45,7 +45,7 @@ const body = raw.slice(fmMatch[0].length);
 
 console.log('\nFrontmatter');
 
-test('file exists at plugin/skills/fsd-help/SKILL.md', () => {
+test('file exists at plugin/skills/help/SKILL.md', () => {
   assert.ok(fs.existsSync(skillPath), `Expected file at ${skillPath}`);
 });
 
@@ -53,8 +53,8 @@ test('frontmatter parses without error', () => {
   assert.ok(typeof frontmatter === 'object' && frontmatter !== null);
 });
 
-test('frontmatter.name equals "fsd-help"', () => {
-  assert.strictEqual(frontmatter.name, 'fsd-help');
+test('frontmatter.name equals "help"', () => {
+  assert.strictEqual(frontmatter.name, 'help');
 });
 
 test('frontmatter.description is a non-empty string', () => {
@@ -72,14 +72,14 @@ test('frontmatter has argument-hint field', () => {
 console.log('\nSkill name coverage');
 
 const SKILL_NAMES = [
-  'fsd-new-project',
-  'fsd-roadmap',
-  'fsd-spec',
-  'fsd-spec-update',
-  'fsd-plan',
-  'fsd-plan-update',
-  'fsd-execute-plan',
-  'fsd-restructure',
+  'new-project',
+  'roadmap',
+  'spec',
+  'spec-update',
+  'plan',
+  'plan-update',
+  'execute-plan',
+  'restructure',
 ];
 
 for (const skill of SKILL_NAMES) {
@@ -139,10 +139,10 @@ test('"Adding a feature" pattern present', () => {
 console.log('\nPer-skill cheat sheets');
 
 for (const skill of SKILL_NAMES) {
-  test(`cheat sheet heading for /${skill} present`, () => {
-    // Match ### /fsd-<name> or ### /fsd-<name> with any trailing text
-    const re = new RegExp(`###\\s+/${skill}`, 'i');
-    assert.ok(re.test(body), `Expected a "### /${skill}" cheat sheet heading`);
+  test(`cheat sheet heading for /fsd:${skill} present`, () => {
+    // Match ### /fsd:<name> or ### /fsd:<name> with any trailing text
+    const re = new RegExp(`###\\s+/fsd:${skill}`, 'i');
+    assert.ok(re.test(body), `Expected a "### /fsd:${skill}" cheat sheet heading`);
   });
 }
 

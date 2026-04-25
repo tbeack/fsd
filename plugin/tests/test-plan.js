@@ -471,7 +471,7 @@ function seedPlanForPre({ fsdDir, planningDir, id, specId = null, status = 'acti
   const r = checkPlanPrecondition({ fsdDir, planId: 'p2' });
   assert.strictEqual(r.ok, false);
   assert.match(r.reason, /archived/);
-  assert.match(r.reason, /\/fsd-plan-update/);
+  assert.match(r.reason, /\/fsd:plan-update/);
 }
 
 // Test 30: refuse when plan has no Phase NN checkboxes.

@@ -1,6 +1,6 @@
 ---
-name: fsd-new-project
-description: Capture project context once — interactively gather identity, scope, tech context, success metrics, anti-goals, and an initial milestone + phase, then write `planning/PROJECT.md` and `planning/ROADMAP.md`. Use right after `/fsd:init` (or any time the repo is missing project framing). Refuses to overwrite existing files. Downstream skills (`fsd-spec`, `fsd-plan`, `fsd-research`, `fsd-execute-plan`, `fsd-ship`) read from these files, so doing this once up front makes every future session start with shared context.
+name: new-project
+description: Capture project context once — interactively gather identity, scope, tech context, success metrics, anti-goals, and an initial milestone + phase, then write `planning/PROJECT.md` and `planning/ROADMAP.md`. Use right after `/fsd:init` (or any time the repo is missing project framing). Refuses to overwrite existing files. Downstream skills (`spec`, `plan`, `research`, `execute-plan`, `ship`) read from these files, so doing this once up front makes every future session start with shared context.
 argument-hint: `[--force-dir=<path>]`
 ---
 
@@ -14,7 +14,7 @@ workflow reads from:
 - `planning/ROADMAP.md` — versioned milestones → numbered phases
 
 This is a **one-time kickoff**. If either file already exists, stop — suggest
-editing it directly or (once available) the dedicated `/fsd-roadmap` skill
+editing it directly or (once available) the dedicated `/fsd:roadmap` skill
 for roadmap maintenance. Never clobber an authored file.
 
 ## Step 1: Confirm the target directory
@@ -29,7 +29,7 @@ ls -la planning/PROJECT.md planning/ROADMAP.md 2>/dev/null
 ```
 
 If **either** exists, tell the user which one is already there and stop. Do
-not rewrite. Suggest editing it manually, or wait for `/fsd-roadmap`
+not rewrite. Suggest editing it manually, or wait for `/fsd:roadmap`
 (FSD-007) to land for incremental roadmap edits.
 
 ## Step 2: Gather PROJECT.md context — one question at a time
@@ -50,7 +50,7 @@ say "use your best judgment" to fast-path any of them.
 6. **Anti-goals** — "What are we deliberately NOT doing? (optional — skip
    with 'none')"
 7. **Verification commands** — "Any repo-wide verification commands? These
-   get run by `/fsd-execute-plan` after each plan phase. Reply like
+   get run by `/fsd:execute-plan` after each plan phase. Reply like
    `tests: bash plugin/tests/run-tests.sh, validate: node plugin/scripts/validate.js plugin`
    using any subset of `tests | validate | typecheck | lint`, or 'skip'."
 
@@ -116,7 +116,7 @@ On success, tell the user:
 - Where the files were written (absolute or relative paths)
 - Run `/fsd:validate` (or `node plugin/scripts/validate.js plugin`) to
   confirm the schemas pass end-to-end
-- Once `fsd-spec` / `fsd-plan` / `fsd-research` land, those skills will
+- Once `spec` / `plan` / `research` land, those skills will
   read from these files automatically — no manual cross-referencing needed
 
 ## Conventions to match
@@ -143,7 +143,7 @@ On success, tell the user:
 - **Write only to `planning/`** (or the `--force-dir` override). Do not
   scatter files under `.fsd/`; this is *planning*, not *artifact* content.
 - **Do not auto-bump the roadmap version** or auto-add milestones after the
-  initial write. That's `/fsd-roadmap`'s job (FSD-007).
+  initial write. That's `/fsd:roadmap`'s job (FSD-007).
 - **Do not start writing specs or plans in the same invocation.** This skill
   captures the framing; the framing tells downstream skills what to work on
   next.

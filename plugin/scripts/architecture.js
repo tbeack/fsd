@@ -4,7 +4,7 @@
 /**
  * ARCHITECTURE.md authoring + maintenance module (FSD-008).
  *
- * Pairs with the `/fsd-plan` skill. ARCHITECTURE.md is a long-lived,
+ * Pairs with the `/fsd:plan` skill. ARCHITECTURE.md is a long-lived,
  * project-level artifact that captures stack, ADR-style decisions, code
  * examples, references, standards, glossary, and open architectural
  * questions. It lives at `<planningDir>/ARCHITECTURE.md` alongside
@@ -276,7 +276,7 @@ function createArchitectureFile({ planningDir, architectureData }) {
         ok: false,
         written: [],
         skipped: [],
-        reason: `PROJECT.md not found under ${planningDir} — run /fsd-new-project first or pass architectureData.project explicitly`,
+        reason: `PROJECT.md not found under ${planningDir} — run /fsd:new-project first or pass architectureData.project explicitly`,
       };
     }
     if (!ctx.project.validation.valid) {

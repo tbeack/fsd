@@ -14,13 +14,13 @@ const CONFIG_TEMPLATE = `# FSD Project Configuration
 workflow: spec-plan-execute-verify
 
 # Content-kind → directory mapping (partial override; unset keys use defaults)
-# Use /fsd-restructure to rename safely after install.
+# Use /fsd:restructure to rename safely after install.
 structure:
   # Scannable kinds (loaded and activated by the framework):
   # skills: skills
   # agents: agents
   # commands: commands
-  # Storage kinds (artifacts written by /fsd-spec, /fsd-plan, /fsd-research):
+  # Storage kinds (artifacts written by /fsd:spec, /fsd:plan, /fsd-research):
   # spec: spec
   # plan: plan
   # research: research
