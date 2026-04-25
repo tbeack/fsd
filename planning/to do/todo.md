@@ -18,3 +18,5 @@
 - [x] `FSD-014` — Create a new `fsd-spec-update` skill (editing existing specs; deferred from FSD-006) ([task-fsd-014](task-fsd-014.md))
 - [x] `FSD-015` — Create a new `fsd-plan-update` skill (editing existing plans; deferred from FSD-008) ([task-fsd-015](task-fsd-015.md))
 - [x] `FSD-016` — Create a `/fsd-help` skill to guide users how to effectively use the FSD framework ([task-fsd-016](task-fsd-016.md))
+- [x] `FSD-017` — Add the GSD context status monitor hook to the FSD framework hooks ([task-fsd-017](task-fsd-017.md))
+- [ ] `FSD-018` — Remove `fsd-` prefix from all framework skills to resolve double-prefix `fsd:fsd-` convention ([task-fsd-018](task-fsd-018.md))

@@ -1,7 +1,7 @@
 {
   "name": "fsd",
   "description": "Full Stack Development — a multi-layer meta-framework for Claude Code with schema-validated skills, agents, and commands",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "author": {
     "name": "Theo Beack"
   },

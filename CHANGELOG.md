@@ -42,6 +42,23 @@ The authoritative version lives in `plugin/.claude-plugin/plugin.json`. The READ
 
 ---
 
+## [0.13.0] - 2026-04-25
+
+### Added
+
+- **`fsd-statusline.js` hook** (FSD-017) — `Notification` hook (`async: false`) that renders a minimal `model | dirname | context_bar` statusline and writes the bridge file `/tmp/claude-ctx-{session_id}.json` used by the context monitor. Bridge payload: `{ session_id, remaining_percentage, used_pct, timestamp }` where `used_pct` is the raw CC value (`100 - remaining_percentage`, no buffer normalization). Context bar is 10 `█`/`░` segments coloured green < 50%, yellow < 65%, orange < 80%, blinking red ≥ 80%. Bridge write is best-effort (try/catch) and is skipped when `remaining_percentage` is absent or the session ID contains path-traversal sequences. Exports `renderStatusline(data)` and `writeBridge(sessionId, remaining)` for unit testing. New test file: `plugin/tests/test-statusline.js` (8 tests: bridge-file fields, absent-remaining no-write, path-traversal guard, model name in stdout, bar characters in stdout, dirname in stdout, export shapes).
+- **`fsd-context-monitor.js` hook** (FSD-017) — `PostToolUse` hook (`async: true`) ported from GSD's `gsd-context-monitor.js` with FSD-specific adaptations. Reads the bridge file written by `fsd-statusline.js` and injects an `additionalContext` agent warning when remaining context drops below 35% (WARNING) or 25% (CRITICAL). Debounce: 5 tool uses between warnings; severity escalation (WARNING → CRITICAL) bypasses debounce. Stale metrics (> 60 s old) are ignored. FSD-specific adaptations: config opt-out path is `.fsd/config.json` (`hooks.context_warnings: false`); active-project detection uses `.fsd/` directory presence instead of GSD's `.planning/STATE.md`; GSD auto-state-recording block (`gsd-tools.cjs` spawn) removed entirely; warning messages use generic language with no GSD-specific command references. Session-ID path-traversal guard and 10-second stdin timeout retained from GSD source. New test file: `plugin/tests/test-context-monitor.js` (8 tests: no-file, above-threshold, WARNING, CRITICAL, stale, debounce, severity escalation, path-traversal guard).
+
+### Changed
+
+- **`plugin/hooks/hooks.json`** — added `Notification` entry (synchronous, `fsd-statusline.js`) and `PostToolUse` entry (asynchronous, `fsd-context-monitor.js`) alongside the existing `SessionStart` entry.
+
+### Compatibility
+
+Fully backward-compatible. Both hooks degrade gracefully: the statusline hook outputs a plain `model | dirname` line if `context_window` is absent; the context monitor exits silently if no bridge file is present (subagent / session with no statusline). Existing projects without `.fsd/config.json` are unaffected — the config opt-out check swallows read errors.
+
+---
+
 ## [0.12.0] - 2026-04-24
 
 ### Added
