@@ -83,7 +83,7 @@ function seedPlan({ fsdDir, planningDir, id, specId = null, status = 'active', p
   const m = content.match(/^---\n([\s\S]*?)\n---/);
   assert.ok(m, 'SKILL.md must have YAML frontmatter');
   const fm = parseYaml(m[1]);
-  assert.strictEqual(fm.name, 'execute-plan');
+  assert.strictEqual(fm.name, 'fsd:execute-plan');
   assert.match(fm['argument-hint'] || '', /plan-id/);
   assert.ok(fm.description && fm.description.length >= 20, 'description must be >= 20 chars');
   // description must name the load-bearing pieces of the skill's contract.

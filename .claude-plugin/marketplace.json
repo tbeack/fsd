@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "fsd",
-      "version": "0.14.0",
+      "version": "0.14.1",
       "source": "./plugin",
       "description": "Full Stack Development — a multi-layer meta-framework for Claude Code with schema-validated skills, agents, and commands"
     }

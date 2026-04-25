@@ -1,5 +1,5 @@
 ---
-name: do-task
+name: fsd:do-task
 description: Execute or plan an FSD task by identifier. Reads `planning/to do/todo.md`, finds the entry, and either drafts the missing `task-fsd-NNN.md` plan or executes the existing one (verify ACs, mark complete in both the task file and todo.md). Use when the user says "do FSD-004", "execute FSD-031", "work on task FSD-007", or similar — anything that names an FSD-NNN identifier and asks to make progress.
 argument-hint: `<FSD-NNN | NNN | N>`
 ---

@@ -171,7 +171,7 @@ function run(args, expectFail = false) {
   const skillPath = path.join(pluginRoot, 'skills', 'roadmap', 'SKILL.md');
   assert.ok(fs.existsSync(skillPath), 'fsd-roadmap SKILL.md must exist');
   const content = fs.readFileSync(skillPath, 'utf-8');
-  assert.ok(/^---\s*\nname: roadmap/m.test(content), 'frontmatter must declare name: roadmap');
+  assert.ok(/^---\s*\nname: fsd:roadmap/m.test(content), 'frontmatter must declare name: fsd:roadmap');
   // Mentions creation-path partner (for users hitting a missing ROADMAP.md)
   assert.ok(content.includes('/fsd:new-project'), 'skill must point users at /fsd:new-project for creation');
   // Lists all 5 op names

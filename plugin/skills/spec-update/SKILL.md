@@ -1,5 +1,5 @@
 ---
-name: spec-update
+name: fsd:spec-update
 description: Edit an existing spec artifact under `.fsd/<structure.spec>/<id>.md`. Dispatches four subcommands — `update` (surgical title/status/related/tags/section rewrite), `approve` (idempotent `approved: true`), `archive` (idempotent `status: archived`), and `supersede` (adds `oldId` to new spec's `supersedes:` + archives old spec). Every op re-validates via `validateSpec` before writing and preserves untouched sections byte-for-byte. Refuses to run if the target spec doesn't exist — use `/fsd:spec` to create new specs.
 argument-hint: `<update|approve|archive|supersede> [--key=value ...]`
 ---

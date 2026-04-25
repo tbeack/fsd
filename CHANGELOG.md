@@ -42,6 +42,13 @@ The authoritative version lives in `plugin/.claude-plugin/plugin.json`. The READ
 
 ---
 
+## [0.14.1] - 2026-04-25
+
+### Fixed
+
+- **Skill prefix duplication** — All 15 remaining skills that were missing the `fsd:` namespace prefix in their `name:` frontmatter field now use `fsd:<name>` consistently (e.g. `name: fsd:plan`, `name: fsd:brainstorm`). Previously, only `spec` carried the prefix; the others had bare names, causing Claude Code to list skills from the two loading paths under different identifiers and display every skill twice.
+- **install.sh: eliminate versioned cache** — `installPath` in `installed_plugins.json` now points directly at `~/.claude/plugins/fsd/plugin` (the live git clone) instead of a versioned copy in `~/.claude/plugins/cache/tbeack/fsd/<VERSION>/`. Any prior versioned cache under `~/.claude/plugins/cache/tbeack/` is deleted on install. This removes the stale-cache class of bug permanently: skills loaded by Claude Code always come from the same directory that `git pull` keeps up to date.
+
 ## [0.14.0] - 2026-04-25
 
 ### Changed

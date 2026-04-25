@@ -1,5 +1,5 @@
 ---
-name: workflow-plan
+name: fsd:workflow-plan
 description: This skill should be used when the user asks to "plan", "create a plan", "break down tasks", "write implementation steps", or needs to turn a design decision into an ordered task list before writing code.
 ---
 

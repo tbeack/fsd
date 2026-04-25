@@ -1,5 +1,5 @@
 ---
-name: brainstorm
+name: fsd:brainstorm
 description: This skill should be used when the user asks to "brainstorm", "explore ideas", "design a feature", "think through options", or begins any creative work like creating features, building components, or modifying behavior. Explores user intent, requirements, and design before implementation.
 ---
 

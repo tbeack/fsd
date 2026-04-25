@@ -4,7 +4,7 @@
 // Integration tests for the `/fsd:plan-update` skill.
 // - Exercises the scripts/plan-update.js CLI entry point via execFileSync
 //   against a throwaway fixture project with seeded plans, one call per op.
-// - Asserts SKILL.md exists, declares name: plan-update, documents all
+// - Asserts SKILL.md exists, declares name: fsd:plan-update, documents all
 //   three ops by name, cross-references /fsd:plan, and covers the
 //   spec-hard-require footgun warning in Guardrails.
 
@@ -227,7 +227,7 @@ function runCli(projectPath, op, args) {
   assert.ok(fs.existsSync(skillPath), 'fsd-plan-update SKILL.md must exist');
   const content = fs.readFileSync(skillPath, 'utf-8');
 
-  assert.match(content, /^---\s*\nname: plan-update/m, 'frontmatter must declare name: plan-update');
+  assert.match(content, /^---\s*\nname: fsd:plan-update/m, 'frontmatter must declare name: fsd:plan-update');
   assert.match(content, /argument-hint:/i, 'frontmatter must document argument-hint');
   for (const op of ['update', 'archive', 'supersede']) {
     assert.ok(content.includes(op), `SKILL.md must mention op "${op}"`);

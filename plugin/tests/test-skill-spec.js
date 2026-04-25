@@ -5,7 +5,7 @@
 // - Exercises scripts/spec.js's CLI entry point via execFileSync against a
 //   throwaway fixture project that has a valid PROJECT.md seeded by
 //   writeProjectFiles (same path the skill uses at runtime).
-// - Asserts SKILL.md exists, declares name: spec, and documents the
+// - Asserts SKILL.md exists, declares name: fsd:spec, and documents the
 //   create-only contract and PROJECT.md precondition behavior.
 
 const assert = require('assert');
@@ -161,12 +161,12 @@ function runCli(projectPath, args) {
   }
 }
 
-// Test 6: SKILL.md exists, declares name: spec, and documents the contract.
+// Test 6: SKILL.md exists, declares name: fsd:spec, and documents the contract.
 {
   assert.ok(fs.existsSync(skillPath), 'fsd-spec SKILL.md must exist');
   const content = fs.readFileSync(skillPath, 'utf-8');
 
-  assert.match(content, /^---\s*\nname: spec/m, 'frontmatter must declare name: spec');
+  assert.match(content, /^---\s*\nname: fsd:spec/m, 'frontmatter must declare name: fsd:spec');
   // PROJECT.md precondition path referenced
   assert.ok(content.includes('PROJECT.md'), 'skill must reference PROJECT.md');
   assert.ok(content.includes('/fsd:new-project'), 'skill must reference /fsd:new-project chain-invocation');

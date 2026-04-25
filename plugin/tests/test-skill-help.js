@@ -54,7 +54,7 @@ test('frontmatter parses without error', () => {
 });
 
 test('frontmatter.name equals "help"', () => {
-  assert.strictEqual(frontmatter.name, 'help');
+  assert.strictEqual(frontmatter.name, 'fsd:help');
 });
 
 test('frontmatter.description is a non-empty string', () => {

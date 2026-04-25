@@ -118,7 +118,7 @@ function runBacking({ planningDir, projectData, roadmapData }) {
   const skillPath = path.join(pluginRoot, 'skills', 'new-project', 'SKILL.md');
   assert.ok(fs.existsSync(skillPath), 'fsd-new-project SKILL.md must exist');
   const content = fs.readFileSync(skillPath, 'utf-8');
-  assert.ok(/^---\s*\nname: new-project/m.test(content), 'frontmatter must declare name: new-project');
+  assert.ok(/^---\s*\nname: fsd:new-project/m.test(content), 'frontmatter must declare name: fsd:new-project');
   assert.ok(content.includes('planning/PROJECT.md'));
   assert.ok(content.includes('planning/ROADMAP.md'));
   // Must call out the refuse-to-overwrite guarantee

@@ -1,5 +1,5 @@
 ---
-name: roadmap
+name: fsd:roadmap
 description: Mid-project ROADMAP.md maintenance. Dispatches five surgical operations — add-milestone, add-phase, advance, complete-phase, bump-version — that edit `planning/ROADMAP.md` in place while preserving user-authored goal prose and re-validating the schema on every write. Use this after `/fsd:new-project` has created the file; refuses to run if ROADMAP.md is missing. Gathers missing args one question at a time. Never edits PROJECT.md; never rewrites your goal paragraphs.
 argument-hint: `<add-milestone|add-phase|advance|complete-phase|bump-version> [--key=value ...]`
 ---

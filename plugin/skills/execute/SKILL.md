@@ -1,5 +1,5 @@
 ---
-name: execute
+name: fsd:execute
 description: This skill should be used when the user asks to "execute", "implement", "build", "start coding", or has an approved plan ready to implement task by task.
 ---
 

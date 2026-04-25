@@ -1,5 +1,5 @@
 ---
-name: plan-update
+name: fsd:plan-update
 description: Edit an existing plan artifact under `.fsd/<structure.plan>/<id>.md`. Dispatches three subcommands — `update` (surgical title/status/related/tags/depends_on/task/estimate/section rewrite), `archive` (idempotent `status: archived`), and `supersede` (adds `oldId` to new plan's `supersedes:` + archives old plan). Every op re-validates via `validatePlan` before writing and preserves untouched sections byte-for-byte. Refuses to run if the target plan doesn't exist — use `/fsd:plan` to create new plans.
 argument-hint: `<update|archive|supersede> [--key=value ...]`
 ---

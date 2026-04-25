@@ -4,7 +4,7 @@
 // Integration tests for the `/fsd:spec-update` skill.
 // - Exercises the scripts/spec-update.js CLI entry point via execFileSync
 //   against a throwaway fixture project with seeded specs, one call per op.
-// - Asserts SKILL.md exists, declares name: spec-update, documents all
+// - Asserts SKILL.md exists, declares name: fsd:spec-update, documents all
 //   four ops by name, and cross-references /fsd:spec as the creation path.
 
 const assert = require('assert');
@@ -177,7 +177,7 @@ function runCli(projectPath, op, args) {
   assert.ok(fs.existsSync(skillPath), 'fsd-spec-update SKILL.md must exist');
   const content = fs.readFileSync(skillPath, 'utf-8');
 
-  assert.match(content, /^---\s*\nname: spec-update/m, 'frontmatter must declare name: spec-update');
+  assert.match(content, /^---\s*\nname: fsd:spec-update/m, 'frontmatter must declare name: fsd:spec-update');
   for (const op of ['update', 'approve', 'archive', 'supersede']) {
     assert.ok(content.includes(op), `SKILL.md must mention op "${op}"`);
   }

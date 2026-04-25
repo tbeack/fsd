@@ -1,5 +1,5 @@
 ---
-name: execute-plan
+name: fsd:execute-plan
 argument-hint: `[plan-id]`
 description: Stateful plan executor. Consumes an approved plan artifact, walks its `- [ ] **Phase NN**` inline checkboxes, runs per-phase verification commands resolved in the order phase-body-hint → plan frontmatter `verification:` → PROJECT.md `verification:` → ask engineer, progressively flips phase + acceptance checkboxes as each passes, and closes out the full pipeline behind one final ACK — CHANGELOG entry, version alignment across `plugin.json` + README + CHANGELOG, todo.md task flip, plan `status → archived`, linked spec `approved → true` (if still false), optional `ARCHITECTURE.md` ADR appends. No auto-commit; engineer owns the release boundary.
 ---

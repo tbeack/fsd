@@ -1,5 +1,5 @@
 ---
-name: spec
+name: fsd:spec
 description: Create a new spec artifact under `.fsd/<structure.spec>/<id>.md`. Interviews the user one question at a time for frontmatter (id, title, status, approved, related, tags) and six body sections (Problem, Goals, Non-goals, Requirements, Acceptance, Open questions). Auto-injects `project:` from `planning/PROJECT.md`. Refuses to overwrite. When PROJECT.md is missing, offers to chain-invoke `/fsd:new-project`. Create-only — editing existing specs is handled by a separate `/fsd:spec-update` skill (future).
 argument-hint: `[spec title]`
 ---

@@ -1,5 +1,5 @@
 ---
-name: add-task
+name: fsd:add-task
 description: Add a new FSD task to the project task tracker at planning/to do/todo.md. Defaults to quick-add (just appends a numbered line); use `--detail` to also gather source/summary/plan/acceptance-criteria and create planning/to do/task-fsd-NNN.md. Use when the user wants to add a task, track a TODO, or capture an idea for the FSD project.
 argument-hint: `[--detail] [brief task title]`
 ---

@@ -1,5 +1,5 @@
 ---
-name: verify
+name: fsd:verify
 description: This skill should be used when the user asks to "verify", "check my work", "review the implementation", or after completing a plan to ensure everything works correctly and meets requirements.
 ---
 

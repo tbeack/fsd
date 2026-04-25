@@ -1,5 +1,5 @@
 ---
-name: plan
+name: fsd:plan
 description: Guided technical-implementation planning inside Claude Code's native plan mode. Engineer-led; the skill reads the linked spec (hard-required), PROJECT.md, ROADMAP.md, ARCHITECTURE.md, the frontmatter of existing plans, and files the spec explicitly names, then runs a Socratic discussion to fill gaps. On ExitPlanMode approval, writes `.fsd/<structure.plan>/<id>.md` and — if the engineer opted in — appends ADR-style decisions to `planning/ARCHITECTURE.md` (or seeds it the first time). Refuses without a spec linkage. Create-only; a future `/fsd:plan-update` skill will handle edits.
 argument-hint: `[spec-id]`
 ---

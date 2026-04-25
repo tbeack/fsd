@@ -216,7 +216,7 @@ function runArchCli(planningDir, opAndArgs) {
   const m = content.match(/^---\n([\s\S]*?)\n---/);
   assert.ok(m, 'frontmatter must be present');
   const fm = parseYaml(m[1]);
-  assert.strictEqual(fm.name, 'plan');
+  assert.strictEqual(fm.name, 'fsd:plan');
   assert.ok(fm.description && fm.description.length >= 20);
   assert.match(fm['argument-hint'] || '', /spec-id/);
 }

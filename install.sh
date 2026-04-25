@@ -3,7 +3,7 @@ set -euo pipefail
 
 REPO="https://github.com/tbeack/fsd.git"
 CLONE_DIR="${HOME}/.claude/plugins/fsd"       # working git clone (source of truth)
-CACHE_BASE="${HOME}/.claude/plugins/cache/tbeack/fsd"
+PLUGIN_DIR="${HOME}/.claude/plugins/fsd/plugin"      # live source; no versioned copy needed
 SETTINGS_FILE="${HOME}/.claude/settings.json"
 INSTALLED_FILE="${HOME}/.claude/plugins/installed_plugins.json"
 FORCE="${1:-}"
@@ -64,7 +64,7 @@ else
   ok "Cloned"
 fi
 
-# --- run tests before deploying to cache ---
+# --- run tests ---
 
 echo ""
 info "Running tests..."
@@ -87,29 +87,15 @@ else
   warn "Validation issues found — run /fsd:validate in Claude Code for details."
 fi
 
-# --- sync plugin content into Claude Code's cache ---
-
-echo ""
-info "Syncing plugin content to Claude Code cache..."
+# --- read version from live clone ---
 
 VERSION=$(node -e "console.log(require('$CLONE_DIR/plugin/.claude-plugin/plugin.json').version)")
-CACHE_DIR="$CACHE_BASE/$VERSION"
 
-# Remove stale versioned cache dirs (keep only the target version)
-if [ -d "$CACHE_BASE" ]; then
-  for old_dir in "$CACHE_BASE"/*/; do
-    [ -d "$old_dir" ] || continue
-    old_ver=$(basename "$old_dir")
-    if [ "$old_ver" != "$VERSION" ]; then
-      rm -rf "$old_dir"
-      info "Removed stale cache: $old_ver"
-    fi
-  done
+# Remove any stale versioned cache left from a prior install
+if [ -d "${HOME}/.claude/plugins/cache/tbeack" ]; then
+  rm -rf "${HOME}/.claude/plugins/cache/tbeack"
+  ok "Removed stale versioned cache"
 fi
-
-mkdir -p "$CACHE_DIR"
-cp -r "$CLONE_DIR/plugin/." "$CACHE_DIR/"
-ok "Plugin content synced to $CACHE_DIR"
 
 # --- update installed_plugins.json ---
 
@@ -129,7 +115,7 @@ try { data = JSON.parse(fs.readFileSync('$INSTALLED_FILE', 'utf8')); }
 catch(e) { data = { version: 2, plugins: {} }; }
 data.plugins['fsd@tbeack'] = [{
   scope: 'user',
-  installPath: '$CACHE_DIR',
+  installPath: '$PLUGIN_DIR',
   version: '$VERSION',
   installedAt: '$INSTALLED_AT',
   lastUpdated: new Date().toISOString(),
@@ -137,7 +123,7 @@ data.plugins['fsd@tbeack'] = [{
 }];
 fs.writeFileSync('$INSTALLED_FILE', JSON.stringify(data, null, 2) + '\n');
 "
-ok "Updated installed_plugins.json → fsd@tbeack v$VERSION"
+ok "Updated installed_plugins.json → fsd@tbeack v$VERSION (installPath: $PLUGIN_DIR)"
 
 # --- patch known_marketplaces.json to point at CLONE_DIR ---
 # Claude Code resolves CLAUDE_PLUGIN_ROOT from the marketplace's installLocation.
@@ -196,7 +182,7 @@ echo "FSD v${VERSION} ready"
 echo ""
 echo "Next steps:"
 echo "  1. Restart Claude Code (or start a new session)"
-echo "  2. You should see FSD skills available (brainstorm, plan, execute, fsd-*)"
+echo "  2. You should see FSD skills available (fsd:plan, fsd:spec, fsd:execute, …)"
 echo "  3. Run /fsd:validate to confirm everything works"
 echo "  4. Run /fsd:init in a project to create a .fsd/ space"
 echo ""

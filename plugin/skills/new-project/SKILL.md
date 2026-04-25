@@ -1,5 +1,5 @@
 ---
-name: new-project
+name: fsd:new-project
 description: Capture project context once — interactively gather identity, scope, tech context, success metrics, anti-goals, and an initial milestone + phase, then write `planning/PROJECT.md` and `planning/ROADMAP.md`. Use right after `/fsd:init` (or any time the repo is missing project framing). Refuses to overwrite existing files. Downstream skills (`spec`, `plan`, `research`, `execute-plan`, `ship`) read from these files, so doing this once up front makes every future session start with shared context.
 argument-hint: `[--force-dir=<path>]`
 ---

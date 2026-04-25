@@ -1,5 +1,5 @@
 ---
-name: help
+name: fsd:help
 description: Overview and quick reference for the FSD framework. No args → full workflow + skill index. Pass a skill name for a focused cheat sheet (e.g. `/fsd:help plan`).
 argument-hint: `[skill-name]`
 ---

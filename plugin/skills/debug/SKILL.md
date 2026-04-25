@@ -1,5 +1,5 @@
 ---
-name: debug
+name: fsd:debug
 description: This skill should be used when the user asks to "debug", "fix a bug", "investigate an error", "troubleshoot", or encounters unexpected behavior that needs systematic diagnosis.
 ---
 
