@@ -42,6 +42,13 @@ The authoritative version lives in `plugin/.claude-plugin/plugin.json`. The READ
 
 ---
 
+## [0.15.0] - 2026-05-06
+
+### Added
+
+- **`/fsd:research` skill** — create research artifacts under `.fsd/research/<id>.md`; guided interview (one question at a time) for frontmatter (`id`, `title`, `status`, `related`, `tags`, `sources`, `conclusion`) and six body sections (Question / Context / Method / Findings / Conclusion / Open questions); auto-injects `project:` from `planning/PROJECT.md`; create-only, refuses to overwrite; backed by the new `research.js` script module.
+- **`plugin/scripts/research.js`** — new backing module mirroring `spec.js`: `renderResearch`, `writeResearchFile`, `resolveResearchPath` exports plus CLI entry point (`node research.js <projectPath> [--json=<path> | --id=... --title=... ...]`). Validates via `validateResearch` before touching disk; atomic tmp+rename write.
+
 ## [0.14.1] - 2026-04-25
 
 ### Fixed
