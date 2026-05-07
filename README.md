@@ -1,6 +1,6 @@
 # FSD — Full Stack Development Framework
 
-**Version 0.14.1** — released 2026-04-25 · [Changelog](./CHANGELOG.md)
+**Version 0.15.0** — released 2026-04-25 · [Changelog](./CHANGELOG.md)
 
 A multi-layer meta-framework plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with schema-validated skills, agents, and commands. Content is resolved across multiple layers so you can customize or override anything without touching the plugin itself.
 
@@ -270,6 +270,12 @@ Six-step flow:
 
 Usage: `/fsd:execute-plan [plan-id]`. Omit the argument to have the skill list non-archived plans and ask which one to execute. Cross-reference pair: `/fsd:plan` writes the plan, `/fsd:plan-update` edits it, `/fsd:execute-plan` consumes it.
 
+### `/fsd:research`
+
+Create a new research artifact under `.fsd/research/<id>.md` — technical investigation notes, spike findings, or reference material that supports spec and plan work. Interviews the user one question at a time for frontmatter (id, title, status, related refs, tags, source URLs, one-line conclusion) and six body sections (Question, Context, Method, Findings, Conclusion, Open questions). Validates frontmatter via `validateResearch` before touching disk; refuses to overwrite an existing artifact. The `conclusion:` frontmatter field is a terse one-liner used by scanners; the `## Conclusion` body section is freeform prose — both may coexist.
+
+Usage: `/fsd:research [research title]`. Auto-injects `project:` from `planning/PROJECT.md` (requires `/fsd:new-project` to have run first). After writing, run `/fsd:validate --artifacts` to confirm the scanner picks it up. Link the artifact to a spec or plan via `related:` in its frontmatter.
+
 ### `/fsd:add-task`
 
 Capture a new task entry in `planning/to do/todo.md` with auto-incremented `FSD-NNN` numbering. Two modes:
@@ -298,6 +304,30 @@ Overview + quick reference for the framework. Read-only — no files read, no ot
 Unknown skill names return the available-skill list and point back at `/fsd:help` with no args.
 
 Usage: `/fsd:help [skill-name]`. No backing script — the SKILL.md is the deliverable. Guardrails: read-only, never writes, never chains.
+
+### `/fsd:brainstorm`
+
+Explore ideas and design options before committing to implementation. Useful any time a new feature, architecture change, or significant behaviour modification needs design before coding begins. Runs a four-step process: clarify intent (2–3 focused questions per round), generate 2–3 named approaches with trade-offs, converge on a direction by surfacing constraints and risks, then capture the decision in 3–5 sentences.
+
+Output: a clear design direction ready to hand off to `/fsd:workflow-plan` or `/fsd:plan` for task breakdown.
+
+### `/fsd:workflow-plan`
+
+Turn a design decision into an ordered, bite-sized implementation plan — each task completable in 2–10 minutes with clear inputs, outputs, and verification steps. Identifies components (new files, modifications, tests, config), orders them by dependency (foundation → core → integration → tests), writes per-task specs (files, action, verify step, commit point), and reviews for missing dependencies, over-large tasks, and YAGNI violations.
+
+Output: a numbered task list ready for the `/fsd:execute` skill.
+
+### `/fsd:debug`
+
+Systematic, evidence-first bug diagnosis. Confirms reproducibility, gathers evidence (logs, stack traces, recent diffs, code-path tracing), forms 2–3 ranked hypotheses, tests each in order, then writes a regression test and applies the minimal fix. Re-runs the full suite to catch regressions before closing.
+
+Output: a working fix with a regression test and a brief root-cause note.
+
+### `/fsd:verify`
+
+Post-implementation quality check — confirms completed work meets requirements and is ready to ship. Runs the full test suite (stops on failures), checks the implementation against the original requirements or plan, reviews code quality (dead code, error handling, security, hot-path performance), and runs a manual smoke test where applicable.
+
+Output: a verification report listing what passed, what needs attention, and whether the work is complete.
 
 ### `/fsd:list`
 
