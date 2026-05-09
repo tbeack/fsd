@@ -125,28 +125,29 @@ fs.writeFileSync('$INSTALLED_FILE', JSON.stringify(data, null, 2) + '\n');
 "
 ok "Updated installed_plugins.json → fsd@tbeack v$VERSION (installPath: $PLUGIN_DIR)"
 
-# --- patch known_marketplaces.json to point at CLONE_DIR ---
+# --- upsert known_marketplaces.json to point at CLONE_DIR ---
 # Claude Code resolves CLAUDE_PLUGIN_ROOT from the marketplace's installLocation.
-# If it still points at an old path, none of the new skills are visible.
+# Without a tbeack entry here, the plugin's commands and skills won't load — so
+# we always write the canonical entry, creating the file if it doesn't exist.
 
 MARKETPLACES_FILE="${HOME}/.claude/plugins/known_marketplaces.json"
-if [ -f "$MARKETPLACES_FILE" ]; then
-  node -e "
-  const fs = require('fs');
-  let data;
-  try { data = JSON.parse(fs.readFileSync('$MARKETPLACES_FILE', 'utf8')); }
-  catch(e) { data = {}; }
-  if (data.tbeack) {
-    data.tbeack.source = { source: 'directory', path: '$CLONE_DIR' };
-    data.tbeack.installLocation = '$CLONE_DIR';
-    data.tbeack.lastUpdated = new Date().toISOString();
-    fs.writeFileSync('$MARKETPLACES_FILE', JSON.stringify(data, null, 2) + '\n');
-    console.log('patched');
-  } else {
-    console.log('skipped (tbeack entry not found)');
-  }
-  " | xargs -I{} sh -c 'echo "  [ok] known_marketplaces.json {}"'
-fi
+node -e "
+const fs = require('fs');
+const path = require('path');
+const file = '$MARKETPLACES_FILE';
+let data;
+try { data = JSON.parse(fs.readFileSync(file, 'utf8')); }
+catch(e) { data = {}; }
+const existed = !!data.tbeack;
+data.tbeack = {
+  source: { source: 'directory', path: '$CLONE_DIR' },
+  installLocation: '$CLONE_DIR',
+  lastUpdated: new Date().toISOString(),
+};
+fs.mkdirSync(path.dirname(file), { recursive: true });
+fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
+console.log(existed ? 'updated' : 'created');
+" | xargs -I{} sh -c 'echo "  [ok] known_marketplaces.json {}"'
 
 # --- enable plugin in settings.json ---
 
